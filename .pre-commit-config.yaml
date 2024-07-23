@@ -12,9 +12,9 @@ repos:
     rev: v0.5.4
     hooks:
       - id: ruff
-        types_or: [ python, pyi, jupyter ]
+        types_or: [ python, jupyter ]
       - id: ruff-format
-        types_or: [ python, pyi, jupyter ]
+        types_or: [ python, jupyter ]
 
 -   repo: https://github.com/gitleaks/gitleaks
     rev: v8.18.4
