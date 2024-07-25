@@ -1,20 +1,33 @@
 import pandas as pd
 import mlflow
 import os
+from pathlib import Path
 from catboost import CatBoostClassifier
 from typing import List, Tuple
 from mlflow.models import infer_signature
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
+from src.utils.evaluate import classification_metrics
 
 
 os.environ["AWS_PROFILE"] = (
     "mlops-zoomcamp"  # fill in with your AWS profile. More info: https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/setup.html#setup-credentials
 )
 TRACKING_SERVER_HOST = (
-    "ec2-3-249-138-11.eu-west-1.compute.amazonaws.com"  # fill in with the public DNS of the EC2 instance
+    "ec2-3-249-6-70.eu-west-1.compute.amazonaws.com"  # fill in with the public DNS of the EC2 instance
 )
 MLFLOW_EXPERIMENT = "pet-adoption-catboost"  # fill in with the name of your MLflow experiment
+TARGET = "AdoptionLikelihood"
+NUM_FEATURES = [
+    "AgeMonths",
+    "WeightKg",
+    "Vaccinated",
+    "HealthCondition",
+    "TimeInShelterDays",
+    "AdoptionFee",
+    "PreviousOwner",
+]
+CAT_FEATURES = ["PetType", "Breed", "Color", "Size"]
+RANDOM_STATE = 42
 
 
 def object_type_to_category(df: pd.DataFrame) -> pd.DataFrame:
@@ -31,8 +44,8 @@ def object_type_to_category(df: pd.DataFrame) -> pd.DataFrame:
 
 def stratified_split(
     df: pd.DataFrame,
-    target_col: str,
-    random_state: int,
+    target_col: str = TARGET,
+    random_state: int = RANDOM_STATE,
     frac_train: float = 0.6,
     frac_val: float = 0.2,
     frac_test: float = 0.2,
@@ -41,12 +54,12 @@ def stratified_split(
     Splits a DataFrame into train, validation, and test sets, stratified on the target column.
 
     :param df: initial dataframe
-    :param target_col: the name fo the target column
+    :param target_col: the name fo the target column, defaults to TARGET
     :param frac_train: the fraction of data in the train set, defaults to 0.6
     :param frac_val: the fraction of data in the validation set, defaults to 0.2
     :param frac_test: the fraction of data in the test set, defaults to 0.2
-    :param random_state: the random seed, defaults to None
-    :return: _description_
+    :param random_state: the random seed, defaults to RANDOM_STATE
+    :return: a tuple of DataFrames (train, validation, test)
     """
     if frac_train + frac_val + frac_test != 1.0:
         raise ValueError("Fractions must sum to 1")
@@ -65,39 +78,13 @@ def stratified_split(
     return df_train, df_val, df_test
 
 
-def compute_classification_metrics(y_train, pred_train, y_val, pred_val):
-    metrics = {}
-
-    # Compute accuracy
-    metrics["train_accuracy"] = accuracy_score(y_train, pred_train)
-    metrics["val_accuracy"] = accuracy_score(y_val, pred_val)
-
-    # Compute precision
-    metrics["train_precision"] = precision_score(y_train, pred_train)
-    metrics["val_precision"] = precision_score(y_val, pred_val)
-
-    # Compute recall
-    metrics["train_recall"] = recall_score(y_train, pred_train)
-    metrics["val_recall"] = recall_score(y_val, pred_val)
-
-    # Compute F1 score
-    metrics["train_f1_score"] = f1_score(y_train, pred_train)
-    metrics["val_f1_score"] = f1_score(y_val, pred_val)
-
-    # Compute ROC AUC score
-    metrics["train_roc_auc"] = roc_auc_score(y_train, pred_train)
-    metrics["val_roc_auc"] = roc_auc_score(y_val, pred_val)
-
-    return metrics
-
-
 def train_model(
     df_train: pd.DataFrame,
     df_val: pd.DataFrame,
-    target: str,
-    num_features: List[str],
-    cat_features: List[str],
-    random_state: int,
+    target: str = TARGET,
+    num_features: List[str] = NUM_FEATURES,
+    cat_features: List[str] = CAT_FEATURES,
+    random_state: int = RANDOM_STATE,
 ) -> CatBoostClassifier:
     """
     Train a CatBoost classifier on the training data and evaluate the model
@@ -105,10 +92,10 @@ def train_model(
 
     :param df_train: the training dataset
     :param df_val: the validation dataset
-    :param target: the name of the target column
-    :param num_features: the list of numerical features
-    :param cat_features: the list of categorical features
-    :param random_state: the random seed
+    :param target: the name of the target column, defaults to TARGET
+    :param num_features: the list of numerical features, defaults to NUM_FEATUERS
+    :param cat_features: the list of categorical features, defaults to CAT_FEATURES
+    :param random_state: the random seed, defaults to RANDOM_STATE
     :return: a fitted CatBoost classifier
     """
     mlflow.set_tracking_uri(f"http://{TRACKING_SERVER_HOST}:5000")
@@ -134,11 +121,22 @@ def train_model(
 
         model.fit(X_train, y_train, eval_set=(X_val, y_val))
 
-        pred_train = model.predict(X_train)
-        pred_val = model.predict(X_val)
-        metrics = compute_classification_metrics(y_train, pred_train, y_val, pred_val)
+        # classification metrics on train set
+        y_pred_train = model.predict(X_train)
+        metrics_train = classification_metrics(y_true=y_train, y_pred=y_pred_train, mode="train")
 
-        signature = infer_signature(X_val, pred_val)
+        # classification metrics on validation set
+        y_pred_val = model.predict(X_val)
+        metrics_val = classification_metrics(y_true=y_train, y_pred=y_pred_train, mode="val")
+
+        print(f"current working dir in python script: {Path.cwd()}")
+
+        # log train and validation metrics
+        metrics = {**metrics_train, **metrics_val}
+        mlflow.log_metrics(metrics)
+
+        # log the model
+        signature = infer_signature(X_val, y_pred_val)
         mlflow.catboost.log_model(
             model,
             "catboost-model",
@@ -146,5 +144,4 @@ def train_model(
             await_registration_for=None,
             signature=signature,
         )
-        mlflow.log_metrics(metrics)
     return model
