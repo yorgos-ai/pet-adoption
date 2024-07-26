@@ -1,12 +1,20 @@
 import pandas as pd
 import seaborn as sns
-from sklearn.metrics import confusion_matrix, accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
+from sklearn.metrics import (
+    confusion_matrix,
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    roc_auc_score,
+    classification_report,
+)
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict
 import matplotlib.pyplot as plt
 
 
-def plot_confusion_matrix(y_true: pd.Series, y_pred: pd.Series, save_path: Optional[Path] = None):
+def plot_confusion_matrix(y_true: pd.Series, y_pred: pd.Series, save_path: Optional[Path] = None) -> None:
     """
     Plot the confusion matrix and save it as a PNG image.
 
@@ -34,7 +42,28 @@ def plot_confusion_matrix(y_true: pd.Series, y_pred: pd.Series, save_path: Optio
     plt.close()
 
 
-def classification_metrics(y_true: pd.Series, y_pred: pd.Series, mode: str):
+def plot_classification_report(y_true: pd.Series, y_pred: pd.Series, save_path: Optional[Path] = None) -> None:
+    """
+    _summary_
+
+    :param y_true: _description_
+    :param y_pred: _description_
+    :param save_path: _description_, defaults to None
+    """
+    cls_report = classification_report(y_true, y_pred, target_names=["Not Adopted", "Adopted"])
+    print(cls_report)
+
+    if save_path:
+        # Convert the classification report to a DataFrame
+        cls_report_json = classification_report(
+            y_true, y_pred, target_names=["Not Adopted", "Adopted"], output_dict=True
+        )
+        cls_report_df = pd.DataFrame(cls_report_json).transpose()
+        cls_report_df.to_csv(save_path)
+    return cls_report_json
+
+
+def classification_metrics(y_true: pd.Series, y_pred: pd.Series, mode: str) -> Dict[str, float]:
     """
     Calculate classification metrics for the model predictions.
 
