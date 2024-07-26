@@ -1,12 +1,11 @@
 import pandas as pd
 import mlflow
 import os
-from pathlib import Path
 from catboost import CatBoostClassifier
 from typing import List, Tuple
 from mlflow.models import infer_signature
 from sklearn.model_selection import train_test_split
-from src.utils.evaluate import classification_metrics
+from src.evaluate import classification_metrics
 
 
 os.environ["AWS_PROFILE"] = (
@@ -129,8 +128,6 @@ def train_model(
         y_pred_val = model.predict(X_val)
         metrics_val = classification_metrics(y_true=y_train, y_pred=y_pred_train, mode="val")
 
-        print(f"current working dir in python script: {Path.cwd()}")
-
         # log train and validation metrics
         metrics = {**metrics_train, **metrics_val}
         mlflow.log_metrics(metrics)
@@ -144,4 +141,5 @@ def train_model(
             await_registration_for=None,
             signature=signature,
         )
+
     return model
