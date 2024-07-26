@@ -27,7 +27,7 @@ https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html
 ### 2. Create an EC2 instance
 Create an EC2 instance. A remote machine with 8 GB of RAM should be more than enough for this project.
 
-Since I am using WSL in Windows 10 with Ubuntu 22.04 as my local machine, I chose to create an Ubuntu 22.04 EC2 instance, to make sure that both my local and remote machines are operating with the same OS.
+Since I am using WSL in Windows 10 with Ubuntu 22.04 as my local machine, I chose to create an Ubuntu 22.04 EC2 instance, to make sure that both my local and remote machines are using the same OS.
 
 #### Install aws-cli
 
@@ -59,4 +59,4 @@ $
 ### 3. MLflow on AWS EC2 instance.
 This project uses an EC2 instance to set up a remote tracking server for MLflow. To set up a remote tracking server, follow the instructions in this [guide](https://github.com/DataTalksClub/mlops-zoomcamp/blob/main/02-experiment-tracking/mlflow_on_aws.md).
 
-Make sure that you create an AWS Linux machine for the MLflow server.
+Important! Make sure that you create an AWS Linux machine for the MLflow server.
