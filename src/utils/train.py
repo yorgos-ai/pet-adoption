@@ -13,7 +13,7 @@ os.environ["AWS_PROFILE"] = (
     "mlops-zoomcamp"  # fill in with your AWS profile. More info: https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/setup.html#setup-credentials
 )
 TRACKING_SERVER_HOST = (
-    "ec2-3-249-6-70.eu-west-1.compute.amazonaws.com"  # fill in with the public DNS of the EC2 instance
+    "ec2-34-254-164-188.eu-west-1.compute.amazonaws.com"  # fill in with the public DNS of the EC2 instance
 )
 MLFLOW_EXPERIMENT = "pet-adoption-catboost"  # fill in with the name of your MLflow experiment
 TARGET = "AdoptionLikelihood"
