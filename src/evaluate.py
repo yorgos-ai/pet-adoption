@@ -34,11 +34,12 @@ def plot_confusion_matrix(y_true: pd.Series, y_pred: pd.Series, save_path: Optio
     plt.title("Confusion Matrix")
     plt.xticks([0.5, 1.5], ["Not Adopted", "Adopted"])  # Move ticks to the middle of the squares
     plt.yticks([0.5, 1.5], ["Not Adopted", "Adopted"])  # Move ticks to the middle of the squares
-    plt.show()
 
     # Save the plot as a PNG image
     if save_path:
         plt.savefig(save_path)
+
+    plt.show()
     plt.close()
 
 
@@ -59,7 +60,7 @@ def plot_classification_report(y_true: pd.Series, y_pred: pd.Series, save_path: 
             y_true, y_pred, target_names=["Not Adopted", "Adopted"], output_dict=True
         )
         cls_report_df = pd.DataFrame(cls_report_json).transpose()
-        cls_report_df.to_csv(save_path)
+        cls_report_df.to_json(save_path)  # Save as JSON instead of CSV
     return cls_report_json
 
 
