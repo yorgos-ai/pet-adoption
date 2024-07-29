@@ -1,17 +1,18 @@
+from pathlib import Path
+from typing import Dict, Optional
+
+import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 from sklearn.metrics import (
-    confusion_matrix,
     accuracy_score,
+    classification_report,
+    confusion_matrix,
+    f1_score,
     precision_score,
     recall_score,
-    f1_score,
     roc_auc_score,
-    classification_report,
 )
-from pathlib import Path
-from typing import Optional, Dict
-import matplotlib.pyplot as plt
 
 
 def plot_confusion_matrix(y_true: pd.Series, y_pred: pd.Series, save_path: Optional[Path] = None) -> None:

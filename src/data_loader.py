@@ -1,6 +1,7 @@
-import pandas as pd
-import boto3
 from io import StringIO
+
+import boto3
+import pandas as pd
 
 
 def read_csv_from_s3(bucket_name: str, file_key: str) -> pd.DataFrame:

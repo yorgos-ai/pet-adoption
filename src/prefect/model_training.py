@@ -1,19 +1,23 @@
-import pandas as pd
-import mlflow
+# from src.data_loader import read_csv_from_s3
 import os
-from catboost import CatBoostClassifier
 from typing import List, Tuple
+
+import mlflow
+import pandas as pd
+from catboost import CatBoostClassifier
 from mlflow.models import infer_signature
+from prefect import flow, task
 from sklearn.model_selection import train_test_split
-from src.evaluate import classification_metrics, plot_classification_report, plot_confusion_matrix
-from src.utils import get_artifact_path
-from pathlib import Path
+
+from src.evaluate import classification_metrics
+from src.feature_engineering import numerical_cols_as_float, object_cols_as_category
+from src.utils import get_project_root, log_classification_report_to_mlflow, log_confusion_matrix_to_mlflow
 
 os.environ["AWS_PROFILE"] = (
     "mlops-zoomcamp"  # fill in with your AWS profile. More info: https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/setup.html#setup-credentials
 )
 TRACKING_SERVER_HOST = (
-    "ec2-34-254-164-188.eu-west-1.compute.amazonaws.com"  # fill in with the public DNS of the EC2 instance
+    "ec2-3-249-16-206.eu-west-1.compute.amazonaws.com"  # fill in with the public DNS of the EC2 instance
 )
 MLFLOW_EXPERIMENT = "pet-adoption-catboost"  # fill in with the name of your MLflow experiment
 TARGET = "AdoptionLikelihood"
@@ -30,18 +34,44 @@ CAT_FEATURES = ["PetType", "Breed", "Color", "Size"]
 RANDOM_STATE = 42
 
 
-def object_type_to_category(df: pd.DataFrame) -> pd.DataFrame:
+@task(name="MLflow Setup")
+def setup_mlflow():
     """
-    Cast object columns as category type.
+    Set up the MLflow tracking server and create an experiment.
 
-    :param df: initial dataframe
-    :return: dataframe with object columns casted to category type
+    :return: None
     """
-    object_columns = df.select_dtypes(include=["object"]).columns
-    df[object_columns] = df[object_columns].astype("category")
+    mlflow.set_tracking_uri(f"http://{TRACKING_SERVER_HOST}:5000")
+    mlflow.set_experiment(MLFLOW_EXPERIMENT)
+
+
+@task(name="Data Ingestion")
+def read_data() -> pd.DataFrame:
+    """
+    Read the pet adoption data from the data directory.
+
+    :return: a Pandas DataFrame
+    """
+    project_root = get_project_root()
+    data_path = project_root / "data" / "pet_adoption_data.csv"
+    df = pd.read_csv(data_path)
     return df
 
 
+@task(name="Data Preprocessing")
+def preprocess_data(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Preprocess the data.
+
+    :param df: the raw data
+    :return: a preprocessed DataFrame
+    """
+    df = object_cols_as_category(df)
+    df = numerical_cols_as_float(df)
+    return df
+
+
+@task(name="Data Splitting")
 def stratified_split(
     df: pd.DataFrame,
     target_col: str = TARGET,
@@ -78,34 +108,7 @@ def stratified_split(
     return df_train, df_val, df_test
 
 
-def log_confusion_matrix_to_mlflow(y_true: pd.Series, y_pred: pd.Series) -> None:
-    """
-    Log the confusion matrix to MLflow.
-
-    :param y_true: the actual labels
-    :param y_pred: the model predictions
-    """
-    artifact_path = get_artifact_path()
-    cfn_matrix_file_name = "confusion_matrix.png"
-    cfn_matrix_path = Path.joinpath(artifact_path, cfn_matrix_file_name)
-    plot_confusion_matrix(y_true=y_true, y_pred=y_pred, save_path=cfn_matrix_path)
-    mlflow.log_artifact(cfn_matrix_path)
-
-
-def log_classification_report_to_mlflow(y_true: pd.Series, y_pred: pd.Series) -> None:
-    """
-    Log the classification report to MLflow.
-
-    :param y_true: the actual labels
-    :param y_pred: the model predictions
-    """
-    artifact_path = get_artifact_path()
-    cls_report_name = "classification_report.json"
-    cls_report_path = Path.joinpath(artifact_path, cls_report_name)
-    plot_classification_report(y_true=y_true, y_pred=y_pred, save_path=cls_report_path)
-    mlflow.log_artifact(cls_report_path)
-
-
+@task(name="Model Training", log_prints=True)
 def train_model(
     df_train: pd.DataFrame,
     df_val: pd.DataFrame,
@@ -126,9 +129,6 @@ def train_model(
     :param random_state: the random seed, defaults to RANDOM_STATE
     :return: a fitted CatBoost classifier
     """
-    mlflow.set_tracking_uri(f"http://{TRACKING_SERVER_HOST}:5000")
-    mlflow.set_experiment(MLFLOW_EXPERIMENT)
-
     # training set
     X_train = df_train[num_features + cat_features]
     y_train = df_train[target]
@@ -181,3 +181,23 @@ def train_model(
         # log the classification report
         log_classification_report_to_mlflow(y_true=y_val, y_pred=y_pred_val)
     return model
+
+
+@flow
+def training_flow() -> None:
+    """
+    The main training flow orchestrated using Prefect.
+
+    The training flow reads the training data, preprocesses it, splits it into
+    training, validation, and test sets, and trains a CatBoost classifier. Finaly, it logs
+    the model and the evaluation metrics to MLflow.
+    """
+    setup_mlflow()
+    df = read_data()
+    df = preprocess_data(df)
+    df_train, df_val, _ = stratified_split(df)
+    train_model(df_train, df_val)
+
+
+if __name__ == "__main__":
+    training_flow()
