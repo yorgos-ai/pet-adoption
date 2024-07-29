@@ -17,7 +17,8 @@ os.environ["AWS_PROFILE"] = (
     "mlops-zoomcamp"  # fill in with your AWS profile. More info: https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/setup.html#setup-credentials
 )
 TRACKING_SERVER_HOST = (
-    "ec2-3-249-16-206.eu-west-1.compute.amazonaws.com"  # fill in with the public DNS of the EC2 instance
+    # "ec2-3-249-16-206.eu-west-1.compute.amazonaws.com"  # fill in with the public DNS of the EC2 instance
+    "sqlite:///mlflow.db"  # use this for SQLite tracking server
 )
 MLFLOW_EXPERIMENT = "pet-adoption-catboost"  # fill in with the name of your MLflow experiment
 TARGET = "AdoptionLikelihood"
@@ -41,7 +42,8 @@ def setup_mlflow():
 
     :return: None
     """
-    mlflow.set_tracking_uri(f"http://{TRACKING_SERVER_HOST}:5000")
+    # mlflow.set_tracking_uri(f"http://{TRACKING_SERVER_HOST}:5000")
+    mlflow.set_tracking_uri(TRACKING_SERVER_HOST)
     mlflow.set_experiment(MLFLOW_EXPERIMENT)
 
 
@@ -155,7 +157,7 @@ def train_model(
 
         # classification metrics on validation set
         y_pred_val = model.predict(X_val)
-        metrics_val = classification_metrics(y_true=y_train, y_pred=y_pred_train, mode="val")
+        metrics_val = classification_metrics(y_true=y_val, y_pred=y_pred_val, mode="val")
 
         # log train and validation metrics
         metrics = {**metrics_train, **metrics_val}
