@@ -20,7 +20,8 @@ TRACKING_SERVER_HOST = (
     # "ec2-3-249-16-206.eu-west-1.compute.amazonaws.com"  # fill in with the public DNS of the EC2 instance
     "sqlite:///mlflow.db"  # use this for SQLite tracking server
 )
-MLFLOW_EXPERIMENT = "pet-adoption-catboost"  # fill in with the name of your MLflow experiment
+MLFLOW_EXPERIMENT = "CatBoost model"  # fill in with the name of your MLflow experiment
+MLFLOW_S3_BUCKET = "s3://mlflow-artifacts-pet-adoption"  # the s3 bucket to store MLflow artifacts
 TARGET = "AdoptionLikelihood"
 NUM_FEATURES = [
     "AgeMonths",
@@ -44,7 +45,15 @@ def setup_mlflow():
     """
     # mlflow.set_tracking_uri(f"http://{TRACKING_SERVER_HOST}:5000")
     mlflow.set_tracking_uri(TRACKING_SERVER_HOST)
-    mlflow.set_experiment(MLFLOW_EXPERIMENT)
+
+    # Check if the experiment exists
+    experiment = mlflow.get_experiment_by_name(MLFLOW_EXPERIMENT)
+    if experiment:
+        mlflow.set_experiment(MLFLOW_EXPERIMENT)
+    else:
+        # Create a new experiment with the given name and S3 path as the artifact folder
+        mlflow.create_experiment(MLFLOW_EXPERIMENT, artifact_location=MLFLOW_S3_BUCKET)
+        mlflow.set_experiment(MLFLOW_EXPERIMENT)
 
 
 @task(name="Data Ingestion")
