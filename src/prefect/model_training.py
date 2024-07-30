@@ -220,9 +220,14 @@ def training_flow() -> None:
     """
     The main training flow orchestrated using Prefect.
 
-    The training flow reads the training data, preprocesses it, splits it into
-    training, validation, and test sets, and trains a CatBoost classifier. Finaly, it logs
-    the model and the evaluation metrics to MLflow.
+    The training flow performs the following steps:
+        1. Sets up the MLflow tracking server and creates an experiment.
+        2. Reads the pet adoption data from the local data directory.
+        3. Preprocesses the data.
+        4. Splits the data into training, validation, and test sets.
+        5. Stores the training, validation, and test sets in S3.
+        6. Trains a CatBoost classifier on the training data and evaluates the model performance on the validation set.\
+            It also logs the model and evaluation metrics to MLflow.
     """
     setup_mlflow()
     df = read_data()
