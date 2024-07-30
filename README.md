@@ -99,11 +99,15 @@ Execute the following command to start the MLflow server:
 ```
 $ mlflow server --backend-store-uri 'sqlite:///mlflow.db' --default-artifact-root 's3://mlflow-artifacts-pet-adoption'
 ```
-The Mlflow server can be accessed at http://127.0.0.1:5000.
+The MLflow server can be accessed at http://127.0.0.1:5000.
 
 ## Workflow orchestration with Prefect
 This project uses Prefect for workflow orchestration. To start the Prefect server, you can execute the following command:
 ```
 prefect server start
+```
+While the Prefect server is running, open a new terminal and execute:
+```
+prefect config set PREFECT_API_URL=http://127.0.0.1:4200/api
 ```
 The Prefect server can be accessed at http://127.0.0.1:4200.
