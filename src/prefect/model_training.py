@@ -2,6 +2,7 @@
 import os
 from typing import List, Tuple
 
+import boto3
 import mlflow
 import pandas as pd
 from catboost import CatBoostClassifier
@@ -21,7 +22,8 @@ TRACKING_SERVER_HOST = (
     "sqlite:///mlflow.db"  # use this for SQLite tracking server
 )
 MLFLOW_EXPERIMENT = "CatBoost model"  # fill in with the name of your MLflow experiment
-MLFLOW_S3_BUCKET = "s3://mlflow-artifacts-pet-adoption"  # the s3 bucket to store MLflow artifacts
+S3_BUCKET_MLFLOW = "mlflow-artifacts-pet-adoption"  # the s3 bucket to store MLflow artifacts
+S3_BUCKET = "pet-adoption-mlops"  # the s3 bucket to store the data
 TARGET = "AdoptionLikelihood"
 NUM_FEATURES = [
     "AgeMonths",
@@ -52,7 +54,7 @@ def setup_mlflow():
         mlflow.set_experiment(MLFLOW_EXPERIMENT)
     else:
         # Create a new experiment with the given name and S3 path as the artifact folder
-        mlflow.create_experiment(MLFLOW_EXPERIMENT, artifact_location=MLFLOW_S3_BUCKET)
+        mlflow.create_experiment(MLFLOW_EXPERIMENT, artifact_location=f"s3://{S3_BUCKET_MLFLOW}")
         mlflow.set_experiment(MLFLOW_EXPERIMENT)
 
 
@@ -117,6 +119,25 @@ def stratified_split(
     )
 
     return df_train, df_val, df_test
+
+
+@task(name="Store data in S3")
+def store_data_in_s3(df: pd.DataFrame, bucket_name: str, file_key: str) -> None:
+    """
+    Write a Pandas DataFrame to an S3 bucket as a CSV file.
+
+    :param df: the DataFrame to be written
+    :param bucket_name: the name of the S3 bucket
+    :param file_key: the full path to the csv file
+    """
+    # Create an S3 resource
+    s3 = boto3.resource("s3")
+
+    # Convert the DataFrame to a CSV string
+    csv_string = df.to_csv(index=False)
+
+    # Write the CSV string to the S3 bucket
+    s3.Object(bucket_name, file_key).put(Body=csv_string)
 
 
 @task(name="Model Training", log_prints=True)
@@ -206,7 +227,10 @@ def training_flow() -> None:
     setup_mlflow()
     df = read_data()
     df = preprocess_data(df)
-    df_train, df_val, _ = stratified_split(df)
+    df_train, df_val, df_test = stratified_split(df)
+    store_data_in_s3(df_train, S3_BUCKET, "data/df_train.csv")
+    store_data_in_s3(df_val, S3_BUCKET, "data/df_val.csv")
+    store_data_in_s3(df_test, S3_BUCKET, "data/df_test.csv")
     train_model(df_train, df_val)
 
 
