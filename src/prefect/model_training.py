@@ -132,10 +132,8 @@ def store_data_in_s3(df: pd.DataFrame, bucket_name: str, file_key: str) -> None:
     """
     # Create an S3 resource
     s3 = boto3.resource("s3")
-
     # Convert the DataFrame to a CSV string
     csv_string = df.to_csv(index=False)
-
     # Write the CSV string to the S3 bucket
     s3.Object(bucket_name, file_key).put(Body=csv_string)
 
