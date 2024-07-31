@@ -7,6 +7,7 @@ import mlflow
 import pandas as pd
 from catboost import CatBoostClassifier
 from mlflow.models import infer_signature
+from mlflow.tracking import MlflowClient
 from prefect import flow, task
 from sklearn.model_selection import train_test_split
 
@@ -17,11 +18,12 @@ from src.utils import get_project_root, log_classification_report_to_mlflow, log
 os.environ["AWS_PROFILE"] = (
     "mlops-zoomcamp"  # fill in with your AWS profile. More info: https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/setup.html#setup-credentials
 )
-TRACKING_SERVER_HOST = (
+MLFLOW_TRACKING_URI = (
     # "ec2-3-249-16-206.eu-west-1.compute.amazonaws.com"  # fill in with the public DNS of the EC2 instance
     "sqlite:///mlflow.db"  # use this for SQLite tracking server
 )
 MLFLOW_EXPERIMENT = "CatBoost model"  # fill in with the name of your MLflow experiment
+MLFLOW_MODEL_NAME = "catboost-model"
 S3_BUCKET_MLFLOW = "mlflow-artifacts-pet-adoption"  # the s3 bucket to store MLflow artifacts
 S3_BUCKET = "pet-adoption-mlops"  # the s3 bucket to store the data
 TARGET = "AdoptionLikelihood"
@@ -46,7 +48,7 @@ def setup_mlflow():
     :return: None
     """
     # mlflow.set_tracking_uri(f"http://{TRACKING_SERVER_HOST}:5000")
-    mlflow.set_tracking_uri(TRACKING_SERVER_HOST)
+    mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
 
     # Check if the experiment exists
     experiment = mlflow.get_experiment_by_name(MLFLOW_EXPERIMENT)
@@ -182,11 +184,11 @@ def train_model(
 
         model.fit(X_train, y_train, eval_set=(X_val, y_val))
 
-        # classification metrics on train set
+        # train metrics
         y_pred_train = model.predict(X_train)
         metrics_train = classification_metrics(y_true=y_train, y_pred=y_pred_train, mode="train")
 
-        # classification metrics on validation set
+        # validation metrics
         y_pred_val = model.predict(X_val)
         metrics_val = classification_metrics(y_true=y_val, y_pred=y_pred_val, mode="val")
 
@@ -194,11 +196,23 @@ def train_model(
         metrics = {**metrics_train, **metrics_val}
         mlflow.log_metrics(metrics)
 
+        # log train and validation sets
+        train_data = mlflow.data.from_pandas(df=df_train, name="train_data")
+        mlflow.log_input(train_data, "training")
+        val_data = mlflow.data.from_pandas(df=df_val, name="val_data")
+        mlflow.log_input(val_data, "validation")
+
+        # log the confusion matrix
+        log_confusion_matrix_to_mlflow(y_true=y_val, y_pred=y_pred_val)
+
+        # log the classification report
+        log_classification_report_to_mlflow(y_true=y_val, y_pred=y_pred_val)
+
         # log the model
         signature = infer_signature(X_val, y_pred_val)
         mlflow.catboost.log_model(
             model,
-            "catboost-model",
+            MLFLOW_MODEL_NAME,
             await_registration_for=None,
             signature=signature,
         )
@@ -207,17 +221,21 @@ def train_model(
         model_params = model.get_all_params()
         mlflow.log_params(model_params)
 
-        # log the confusion matrix
-        log_confusion_matrix_to_mlflow(y_true=y_val, y_pred=y_pred_val)
-
-        # log the classification report
-        log_classification_report_to_mlflow(y_true=y_val, y_pred=y_pred_val)
-
         # register the model if the validation recall is above 0.9
         print(f"The challenger model has a validation recall of {metrics_val['val_recall']}.")
         if metrics_val["val_recall"] > 0.9:
             mlflow.register_model(f"runs:/{run_id}/catboost-model", "catboost-model")
             print(f"Model registered in MLflow with run_id: {run_id}")
+
+            # promote to production
+            client = MlflowClient(MLFLOW_TRACKING_URI)
+            client.transition_model_version_stage(
+                name=MLFLOW_MODEL_NAME,
+                version=client.get_latest_versions(MLFLOW_MODEL_NAME, stages=["None"])[0].version,
+                stage="Production",
+                archive_existing_versions=True,
+            )
+            print("Model promoted to Production.")
         else:
             print("The challenger model did not meet the recall threshold of 0.9 on the validation set.")
 
