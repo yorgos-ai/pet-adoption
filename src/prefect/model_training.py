@@ -168,6 +168,9 @@ def train_model(
     y_val = df_val[target]
 
     with mlflow.start_run():
+        run_id = mlflow.active_run().info.run_id
+        print(f"MLflow run_id: {run_id}")
+
         model = CatBoostClassifier(
             iterations=1000,
             learning_rate=0.1,
@@ -210,6 +213,15 @@ def train_model(
 
         # log the classification report
         log_classification_report_to_mlflow(y_true=y_val, y_pred=y_pred_val)
+
+        # register the model if the validation recall is above 0.9
+        print(f"The challenger model has a validation recall of {metrics_val['val_recall']}.")
+        if metrics_val["val_recall"] > 0.9:
+            mlflow.register_model(f"runs:/{run_id}/catboost-model", "catboost-model")
+            print(f"Model registered in MLflow with run_id: {run_id}")
+        else:
+            print("The challenger model did not meet the recall threshold of 0.9 on the validation set.")
+
     return model
 
 
