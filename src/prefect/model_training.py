@@ -199,7 +199,6 @@ def train_model(
         mlflow.catboost.log_model(
             model,
             "catboost-model",
-            registered_model_name="catboost-model",
             await_registration_for=None,
             signature=signature,
         )
