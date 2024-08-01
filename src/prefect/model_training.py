@@ -6,6 +6,7 @@ import boto3
 import mlflow
 import pandas as pd
 from catboost import CatBoostClassifier
+from dotenv import load_dotenv
 from mlflow.models import infer_signature
 from mlflow.tracking import MlflowClient
 from prefect import flow, task
@@ -15,17 +16,6 @@ from src.evaluate import classification_metrics
 from src.feature_engineering import numerical_cols_as_float, object_cols_as_category
 from src.utils import get_project_root, log_classification_report_to_mlflow, log_confusion_matrix_to_mlflow
 
-os.environ["AWS_PROFILE"] = (
-    "mlops-zoomcamp"  # fill in with your AWS profile. More info: https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/setup.html#setup-credentials
-)
-MLFLOW_TRACKING_URI = (
-    # "ec2-3-249-16-206.eu-west-1.compute.amazonaws.com"  # fill in with the public DNS of the EC2 instance
-    "sqlite:///mlflow.db"  # use this for SQLite tracking server
-)
-MLFLOW_EXPERIMENT = "CatBoost model"  # fill in with the name of your MLflow experiment
-MLFLOW_MODEL_NAME = "catboost-model"
-S3_BUCKET_MLFLOW = "mlflow-artifacts-pet-adoption"  # the s3 bucket to store MLflow artifacts
-S3_BUCKET = "pet-adoption-mlops"  # the s3 bucket to store the data
 TARGET = "AdoptionLikelihood"
 NUM_FEATURES = [
     "AgeMonths",
@@ -39,25 +29,27 @@ NUM_FEATURES = [
 CAT_FEATURES = ["PetType", "Breed", "Color", "Size"]
 RANDOM_STATE = 42
 
+load_dotenv()
+
 
 @task(name="MLflow Setup")
-def setup_mlflow():
+def setup_mlflow() -> None:
     """
     Set up the MLflow tracking server and create an experiment.
-
-    :return: None
     """
     # mlflow.set_tracking_uri(f"http://{TRACKING_SERVER_HOST}:5000")
-    mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+    mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
 
     # Check if the experiment exists
-    experiment = mlflow.get_experiment_by_name(MLFLOW_EXPERIMENT)
+    experiment = mlflow.get_experiment_by_name(os.getenv("MLFLOW_EXPERIMENT"))
     if experiment:
-        mlflow.set_experiment(MLFLOW_EXPERIMENT)
+        mlflow.set_experiment(os.getenv("MLFLOW_EXPERIMENT"))
     else:
         # Create a new experiment with the given name and S3 path as the artifact folder
-        mlflow.create_experiment(MLFLOW_EXPERIMENT, artifact_location=f"s3://{S3_BUCKET_MLFLOW}")
-        mlflow.set_experiment(MLFLOW_EXPERIMENT)
+        mlflow.create_experiment(
+            os.getenv("MLFLOW_EXPERIMENT"), artifact_location=f"s3://{os.getenv('S3_BUCKET_MLFLOW')}"
+        )
+        mlflow.set_experiment(os.getenv("MLFLOW_EXPERIMENT"))
 
 
 @task(name="Data Ingestion")
@@ -212,7 +204,7 @@ def train_model(
         signature = infer_signature(X_val, y_pred_val)
         mlflow.catboost.log_model(
             model,
-            MLFLOW_MODEL_NAME,
+            os.getenv("MLFLOW_MODEL_NAME"),
             await_registration_for=None,
             signature=signature,
         )
@@ -228,10 +220,10 @@ def train_model(
             print(f"Model registered in MLflow with run_id: {run_id}")
 
             # promote to production
-            client = MlflowClient(MLFLOW_TRACKING_URI)
+            client = MlflowClient(os.getenv("MLFLOW_TRACKING_URI"))
             client.transition_model_version_stage(
-                name=MLFLOW_MODEL_NAME,
-                version=client.get_latest_versions(MLFLOW_MODEL_NAME, stages=["None"])[0].version,
+                name=os.getenv("MLFLOW_MODEL_NAME"),
+                version=client.get_latest_versions(os.getenv("MLFLOW_MODEL_NAME"), stages=["None"])[0].version,
                 stage="Production",
                 archive_existing_versions=True,
             )
@@ -260,9 +252,9 @@ def training_flow() -> None:
     df = read_data()
     df = preprocess_data(df)
     df_train, df_val, df_test = stratified_split(df)
-    store_data_in_s3(df_train, S3_BUCKET, "data/df_train.csv")
-    store_data_in_s3(df_val, S3_BUCKET, "data/df_val.csv")
-    store_data_in_s3(df_test, S3_BUCKET, "data/df_test.csv")
+    store_data_in_s3(df_train, os.getenv("S3_BUCKET"), "data/df_train.csv")
+    store_data_in_s3(df_val, os.getenv("S3_BUCKET"), "data/df_val.csv")
+    store_data_in_s3(df_test, os.getenv("S3_BUCKET"), "data/df_test.csv")
     train_model(df_train, df_val)
 
 
