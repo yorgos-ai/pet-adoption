@@ -25,7 +25,7 @@ deployments:
   version:
   tags: []
   description:
-  entrypoint: pet_adoption/prefect/model_training.py:training_flow
+  entrypoint: pet_adoption/floes/model_training.py:training_flow
   parameters: {}
   work_pool:
     name: process-pool

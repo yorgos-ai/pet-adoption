@@ -1,19 +1,17 @@
-# from src.data_loader import read_csv_from_s3
 import os
 from typing import List, Tuple
 
 import boto3
 import mlflow
 import pandas as pd
-from catboost import CatBoostClassifier
+from catboost import CatBoostClassifier, Pool
 from dotenv import load_dotenv
-from mlflow.models import infer_signature
 from mlflow.tracking import MlflowClient
 from prefect import flow, task
 from sklearn.model_selection import train_test_split
 
 from pet_adoption.evaluate import classification_metrics
-from pet_adoption.feature_engineering import numerical_cols_as_float, object_cols_as_category
+from pet_adoption.feature_engineering import numerical_cols_as_float
 from pet_adoption.utils import get_project_root, log_classification_report_to_mlflow, log_confusion_matrix_to_mlflow
 
 TARGET = "AdoptionLikelihood"
@@ -73,7 +71,6 @@ def preprocess_data(df: pd.DataFrame) -> pd.DataFrame:
     :param df: the raw data
     :return: a preprocessed DataFrame
     """
-    df = object_cols_as_category(df)
     df = numerical_cols_as_float(df)
     return df
 
@@ -165,16 +162,18 @@ def train_model(
         run_id = mlflow.active_run().info.run_id
         print(f"MLflow run_id: {run_id}")
 
+        train_pool = Pool(data=X_train, label=y_train, cat_features=CAT_FEATURES)
+        val_pool = Pool(data=X_val, label=y_val, cat_features=CAT_FEATURES)
+
         model = CatBoostClassifier(
             iterations=1000,
             learning_rate=0.1,
             depth=6,
-            cat_features=cat_features,
             verbose=200,
             random_state=random_state,
         )
 
-        model.fit(X_train, y_train, eval_set=(X_val, y_val))
+        model.fit(train_pool, eval_set=val_pool, plot=True, use_best_model=True)
 
         # train metrics
         y_pred_train = model.predict(X_train)
@@ -201,12 +200,11 @@ def train_model(
         log_classification_report_to_mlflow(y_true=y_val, y_pred=y_pred_val)
 
         # log the model
-        signature = infer_signature(X_val, y_pred_val)
         mlflow.catboost.log_model(
             model,
             os.getenv("MLFLOW_MODEL_NAME"),
             await_registration_for=None,
-            signature=signature,
+            signature=None,  # MLflow data types and CatBoost categorical features do not work well together
         )
 
         # log the model params
@@ -237,7 +235,7 @@ def train_model(
 @flow
 def training_flow() -> None:
     """
-    The main training flow orchestrated using Prefect.
+    The main training flow orchestrated with Prefect.
 
     The training flow performs the following steps:
         1. Sets up the MLflow tracking server and creates an experiment.
