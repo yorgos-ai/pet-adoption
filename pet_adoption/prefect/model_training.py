@@ -12,9 +12,9 @@ from mlflow.tracking import MlflowClient
 from prefect import flow, task
 from sklearn.model_selection import train_test_split
 
-from src.evaluate import classification_metrics
-from src.feature_engineering import numerical_cols_as_float, object_cols_as_category
-from src.utils import get_project_root, log_classification_report_to_mlflow, log_confusion_matrix_to_mlflow
+from pet_adoption.evaluate import classification_metrics
+from pet_adoption.feature_engineering import numerical_cols_as_float, object_cols_as_category
+from pet_adoption.utils import get_project_root, log_classification_report_to_mlflow, log_confusion_matrix_to_mlflow
 
 TARGET = "AdoptionLikelihood"
 NUM_FEATURES = [

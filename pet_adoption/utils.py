@@ -3,7 +3,7 @@ from pathlib import Path
 import mlflow
 import pandas as pd
 
-from src.evaluate import plot_classification_report, plot_confusion_matrix
+from pet_adoption.evaluate import plot_classification_report, plot_confusion_matrix
 
 
 def get_project_root() -> Path:
