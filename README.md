@@ -97,7 +97,7 @@ This project uses two S3 buckets. The `pet-adoption-mlops` is a general purpose 
 ## Experiment tracking with MLflow
 Execute the following command to start the MLflow server:
 ```
-$ mlflow server --backend-store-uri 'sqlite:///mlflow.db' --default-artifact-root 's3://mlflow-artifacts-pet-adoption'
+$ make mlflow
 ```
 The MLflow server can be accessed at http://127.0.0.1:5000.
 
