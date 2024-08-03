@@ -1,3 +1,4 @@
+import json
 import os
 from typing import List, Tuple
 
@@ -6,9 +7,13 @@ import mlflow
 import pandas as pd
 from catboost import CatBoostClassifier, Pool
 from dotenv import load_dotenv
+from evidently import ColumnMapping
+from evidently.metrics import ColumnDriftMetric, DatasetDriftMetric, DatasetMissingValuesMetric
+from evidently.report import Report
 from mlflow.tracking import MlflowClient
 from prefect import flow, task
 from sklearn.model_selection import train_test_split
+from sqlalchemy import create_engine
 
 from pet_adoption.evaluate import classification_metrics
 from pet_adoption.feature_engineering import numerical_cols_as_float
@@ -137,7 +142,7 @@ def train_model(
     num_features: List[str] = NUM_FEATURES,
     cat_features: List[str] = CAT_FEATURES,
     random_state: int = RANDOM_STATE,
-) -> CatBoostClassifier:
+) -> Tuple[CatBoostClassifier, pd.DataFrame, pd.DataFrame]:
     """
     Train a CatBoost classifier on the training data and evaluate the model
     performance on the validation data.
@@ -148,7 +153,7 @@ def train_model(
     :param num_features: the list of numerical features, defaults to NUM_FEATUERS
     :param cat_features: the list of categorical features, defaults to CAT_FEATURES
     :param random_state: the random seed, defaults to RANDOM_STATE
-    :return: a fitted CatBoost classifier
+    :return: the fitted CatBoost classifier and the train and validation sets including the model prediction
     """
     # training set
     X_train = df_train[num_features + cat_features]
@@ -177,10 +182,12 @@ def train_model(
 
         # train metrics
         y_pred_train = model.predict(X_train)
+        df_train["prediction"] = y_pred_train
         metrics_train = classification_metrics(y_true=y_train, y_pred=y_pred_train, mode="train")
 
         # validation metrics
         y_pred_val = model.predict(X_val)
+        df_val["prediction"] = y_pred_val
         metrics_val = classification_metrics(y_true=y_val, y_pred=y_pred_val, mode="val")
 
         # log train and validation metrics
@@ -229,7 +236,92 @@ def train_model(
         else:
             print("The challenger model did not meet the recall threshold of 0.9 on the validation set.")
 
-    return model
+    return model, df_train, df_val
+
+
+@task(name="Monitoring metrics")
+def monitor_model_performance(train_data: pd.DataFrame, val_data: pd.DataFrame) -> dict:
+    """
+    Create monitoring report using Evidently.
+
+    :param train_data: the training set
+    :param val_data: the validation set
+    :return: a dictionary containing the monitoring metrics
+    """
+    col_mapping = ColumnMapping(
+        target=None, prediction="prediction", numerical_features=NUM_FEATURES, categorical_features=CAT_FEATURES
+    )
+
+    report = Report(
+        metrics=[
+            # ClassificationPRCurve(
+            #     col_mapping=col_mapping,
+            #     prediction_column="prediction",
+            #     target_column=TARGET,
+            #     pos_label=1
+            # ),
+            ColumnDriftMetric(column_name="prediction"),
+            DatasetDriftMetric(),
+            DatasetMissingValuesMetric(),
+        ]
+    )
+
+    report.run(reference_data=train_data, current_data=val_data, column_mapping=col_mapping)
+    metric_sdict = report.as_dict()["metrics"]
+    return metric_sdict
+
+
+@task(name="Store Monitoring Metrics")
+def save_dict_in_s3(metrics_dict: dict, bucket_name: str, file_key: str) -> None:
+    """
+    Store a dictionary as a JSON file in an S3 bucket.
+
+    :param metrics_dict: the dictionary to be stored
+    :param bucket_name: the name of the S3 bucket
+    :param file_key: the full path to the JSON file
+    """
+    # Create an S3 resource
+    s3 = boto3.resource("s3")
+    # Convert the dictionary to a JSON string
+    json_string = json.dumps(metrics_dict)
+    # Write the JSON string to the S3 bucket
+    s3.Object(bucket_name, file_key).put(Body=json_string)
+
+
+@task(name="extract_batch_report_data")
+def extract_report_data(batch_date, metrics_dict: dict) -> None:
+    # report.run(reference_data=training_data, current_data=batch_data, column_mapping=column_mapping)
+    # drift_report = report.as_dict()["metrics"]
+
+    drift_prediction = {
+        "batch_date": batch_date,
+        "drift_stat_test": metrics_dict[0]["result"]["stattest_name"],
+        "drift_stat_threshold": metrics_dict[0]["result"]["stattest_threshold"],
+        "drift_score": metrics_dict[0]["result"]["drift_score"],
+        "drift_detected": metrics_dict[0]["result"]["drift_detected"],
+    }
+
+    drift_dataset = {
+        "batch_date": batch_date,
+        "drift_dataset": metrics_dict[1]["result"]["drift_share"],
+        "number_of_columns": metrics_dict[1]["result"]["number_of_columns"],
+        "number_of_drifted_columns": metrics_dict[1]["result"]["number_of_drifted_columns"],
+        "share_of_drifted_columns": metrics_dict[1]["result"]["share_of_drifted_columns"],
+        "dataset_drift": metrics_dict[1]["result"]["dataset_drift"],
+    }
+
+    params = {
+        "user": os.getenv("POSTGRES_USER"),
+        "pass": os.getenv("POSTGRES_PASSWORD"),
+        "host": os.getenv("POSTGRES_HOST"),
+        "port": os.getenv("POSTGRES_PORT"),
+        "database": "metrics_training",
+    }
+    engine = create_engine("postgresql://%(user)s:%(pass)s@%(host)s:%(port)s/%(database)s" % params)
+
+    # insert metrics
+    pd.DataFrame(drift_prediction, index=[0]).to_sql("drift_prediction", engine, if_exists="append", index=False)
+    pd.DataFrame(drift_dataset, index=[0]).to_sql("drift_dataset", engine, if_exists="append", index=False)
 
 
 @flow
@@ -253,7 +345,11 @@ def training_flow() -> None:
     store_data_in_s3(df_train, os.getenv("S3_BUCKET"), "data/df_train.csv")
     store_data_in_s3(df_val, os.getenv("S3_BUCKET"), "data/df_val.csv")
     store_data_in_s3(df_test, os.getenv("S3_BUCKET"), "data/df_test.csv")
-    train_model(df_train, df_val)
+    model, train_df, val_df = train_model(df_train, df_val)
+    metrics_dict = monitor_model_performance(train_data=train_df, val_data=val_df)
+    save_dict_in_s3(metrics_dict, os.getenv("S3_BUCKET"), "data/monitoring_metrics.json")
+    extract_report_data(batch_date="2024-08-03", metrics_dict=metrics_dict)
+    print(metrics_dict)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,23 @@
+apiVersion: 1
+
+datasources:
+  - name: PostgreSQL_metrics_training
+    type: postgres
+    access: proxy
+    url: db.:5432
+    database: metrics_training
+    user: admin
+    secureJsonData:
+      password: admin
+    jsonData:
+      sslmode: 'disable'
+  - name: PostgreSQL_metrics_batch
+    type: postgres
+    access: proxy
+    url: db.:5432
+    database: metrics_batch
+    user: admin
+    secureJsonData:
+      password: admin
+    jsonData:
+      sslmode: 'disable'

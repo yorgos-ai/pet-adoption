@@ -22,6 +22,12 @@ scikit-learn = "^1.5.1"
 mlflow = "^2.14.3"
 prefect = "^2.19.9"
 python-dotenv = "^1.0.1"
+tqdm = "^4.66.4"
+evidently = "^0.4.33"
+dotenv-cli = "^3.3.1"
+setuptools = "^72.1.0"
+psycopg2-binary = "^2.9.9"
+psycopg2 = "^2.9.9"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^3.7.1"
