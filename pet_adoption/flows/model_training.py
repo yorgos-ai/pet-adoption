@@ -240,12 +240,12 @@ def train_model(
 
 
 @task(name="Monitoring metrics")
-def monitor_model_performance(train_data: pd.DataFrame, val_data: pd.DataFrame) -> dict:
+def monitor_model_performance(reference_data: pd.DataFrame, current_data: pd.DataFrame) -> dict:
     """
     Create monitoring report using Evidently.
 
-    :param train_data: the training set
-    :param val_data: the validation set
+    :param reference_data: the reference data
+    :param val_data: the current data
     :return: a dictionary containing the monitoring metrics
     """
     col_mapping = ColumnMapping(
@@ -260,9 +260,9 @@ def monitor_model_performance(train_data: pd.DataFrame, val_data: pd.DataFrame) 
         ]
     )
 
-    report.run(reference_data=train_data, current_data=val_data, column_mapping=col_mapping)
-    metric_sdict = report.as_dict()["metrics"]
-    return metric_sdict
+    report.run(reference_data=reference_data, current_data=current_data, column_mapping=col_mapping)
+    metrics_dict = report.as_dict()["metrics"]
+    return metrics_dict
 
 
 @task(name="Store Monitoring Metrics")
@@ -283,10 +283,14 @@ def save_dict_in_s3(metrics_dict: dict, bucket_name: str, file_key: str) -> None
 
 
 @task(name="extract_batch_report_data")
-def extract_report_data(batch_date, metrics_dict: dict) -> None:
-    # report.run(reference_data=training_data, current_data=batch_data, column_mapping=column_mapping)
-    # drift_report = report.as_dict()["metrics"]
+def extract_report_data(batch_date, metrics_dict: dict, db_name: str) -> None:
+    """
+    Extract the monitoring metrics and store them in a PostgreSQL database.
 
+    :param batch_date: the date of the batch
+    :param metrics_dict: the dictionary containing the monitoring metrics
+    :param db_name: the name of the Postgres db
+    """
     drift_prediction = {
         "batch_date": batch_date,
         "drift_stat_test": metrics_dict[0]["result"]["stattest_name"],
@@ -309,7 +313,7 @@ def extract_report_data(batch_date, metrics_dict: dict) -> None:
         "pass": os.getenv("POSTGRES_PASSWORD"),
         "host": os.getenv("POSTGRES_HOST"),
         "port": os.getenv("POSTGRES_PORT"),
-        "database": "training_monitoring",
+        "database": db_name,
     }
     engine = create_engine("postgresql://%(user)s:%(pass)s@%(host)s:%(port)s/%(database)s" % params)
 
@@ -333,17 +337,23 @@ def training_flow() -> None:
             It also logs the model and evaluation metrics to MLflow.
     """
     setup_mlflow()
+
     df = read_data()
     df = preprocess_data(df)
     df_train, df_val, df_test = stratified_split(df)
+
+    # store the data in S3
     store_data_in_s3(df_train, os.getenv("S3_BUCKET"), "data/df_train.csv")
     store_data_in_s3(df_val, os.getenv("S3_BUCKET"), "data/df_val.csv")
     store_data_in_s3(df_test, os.getenv("S3_BUCKET"), "data/df_test.csv")
+
+    # train the model
     model, train_df, val_df = train_model(df_train, df_val)
-    metrics_dict = monitor_model_performance(train_data=train_df, val_data=val_df)
-    save_dict_in_s3(metrics_dict, os.getenv("S3_BUCKET"), "data/monitoring_metrics.json")
-    extract_report_data(batch_date="2024-08-03", metrics_dict=metrics_dict)
-    print(metrics_dict)
+
+    # monitoring metrics
+    metrics_dict = monitor_model_performance(reference_data=train_df, current_data=val_df)
+    save_dict_in_s3(metrics_dict, os.getenv("S3_BUCKET"), "data/monitoring_metrics_training.json")
+    extract_report_data(batch_date="2024-08-03", metrics_dict=metrics_dict, db_name="training_monitoring")
 
 
 if __name__ == "__main__":
