@@ -303,7 +303,7 @@ def extract_report_data(batch_date, metrics_dict: dict) -> None:
 
     drift_dataset = {
         "batch_date": batch_date,
-        "drift_dataset": metrics_dict[1]["result"]["drift_share"],
+        "drift_share": metrics_dict[1]["result"]["drift_share"],
         "number_of_columns": metrics_dict[1]["result"]["number_of_columns"],
         "number_of_drifted_columns": metrics_dict[1]["result"]["number_of_drifted_columns"],
         "share_of_drifted_columns": metrics_dict[1]["result"]["share_of_drifted_columns"],
@@ -315,7 +315,7 @@ def extract_report_data(batch_date, metrics_dict: dict) -> None:
         "pass": os.getenv("POSTGRES_PASSWORD"),
         "host": os.getenv("POSTGRES_HOST"),
         "port": os.getenv("POSTGRES_PORT"),
-        "database": "metrics_training",
+        "database": "monitoring",
     }
     engine = create_engine("postgresql://%(user)s:%(pass)s@%(host)s:%(port)s/%(database)s" % params)
 

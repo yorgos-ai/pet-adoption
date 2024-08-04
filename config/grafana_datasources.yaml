@@ -5,19 +5,20 @@ datasources:
     type: postgres
     access: proxy
     url: db.:5432
-    database: metrics_training
-    user: admin
+    database: monitoring
+    user: 'admin'
     secureJsonData:
-      password: admin
+      password: 'admin'
     jsonData:
       sslmode: 'disable'
+
   - name: PostgreSQL_metrics_batch
     type: postgres
     access: proxy
     url: db.:5432
-    database: metrics_batch
-    user: admin
+    database: monitoring
+    user: 'admin'
     secureJsonData:
-      password: admin
+      password: 'admin'
     jsonData:
       sslmode: 'disable'
