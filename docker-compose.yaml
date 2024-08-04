@@ -7,7 +7,6 @@ services:
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
-      POSTGRES_DB: monitoring
     volumes:
       - ./postgres:/var/lib/postgresql/data
       - ./pet_adoption/scripts/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql

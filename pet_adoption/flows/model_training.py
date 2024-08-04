@@ -254,12 +254,6 @@ def monitor_model_performance(train_data: pd.DataFrame, val_data: pd.DataFrame) 
 
     report = Report(
         metrics=[
-            # ClassificationPRCurve(
-            #     col_mapping=col_mapping,
-            #     prediction_column="prediction",
-            #     target_column=TARGET,
-            #     pos_label=1
-            # ),
             ColumnDriftMetric(column_name="prediction"),
             DatasetDriftMetric(),
             DatasetMissingValuesMetric(),
@@ -315,7 +309,7 @@ def extract_report_data(batch_date, metrics_dict: dict) -> None:
         "pass": os.getenv("POSTGRES_PASSWORD"),
         "host": os.getenv("POSTGRES_HOST"),
         "port": os.getenv("POSTGRES_PORT"),
-        "database": "monitoring",
+        "database": "training_monitoring",
     }
     engine = create_engine("postgresql://%(user)s:%(pass)s@%(host)s:%(port)s/%(database)s" % params)
 

@@ -5,7 +5,7 @@ datasources:
     type: postgres
     access: proxy
     url: db.:5432
-    database: monitoring
+    database: training_monitoring
     user: 'admin'
     secureJsonData:
       password: 'admin'
@@ -16,7 +16,7 @@ datasources:
     type: postgres
     access: proxy
     url: db.:5432
-    database: monitoring
+    database: predict_monitoring
     user: 'admin'
     secureJsonData:
       password: 'admin'
