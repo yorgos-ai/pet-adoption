@@ -15,6 +15,7 @@ from pet_adoption.flows.tasks import (
     stratified_split,
     train_model,
 )
+from pet_adoption.utils import date_today_str
 
 load_dotenv()
 
@@ -33,6 +34,7 @@ def training_flow() -> None:
         6. Trains a CatBoost classifier on the training data and evaluates the model performance on the validation set.\
             It also logs the model and evaluation metrics to MLflow.
     """
+    batch_date = date_today_str()
     setup_mlflow()
 
     df = read_data()
@@ -54,7 +56,7 @@ def training_flow() -> None:
     # monitoring metrics
     metrics_dict = monitor_model_performance(reference_data=train_df, current_data=val_df)
     save_dict_in_s3(metrics_dict, os.getenv("S3_BUCKET"), "data/monitoring_metrics_training.json")
-    extract_report_data(batch_date="2024-08-03", metrics_dict=metrics_dict, db_name="training_monitoring")
+    extract_report_data(batch_date=batch_date, metrics_dict=metrics_dict, db_name="training_monitoring")
 
 
 if __name__ == "__main__":

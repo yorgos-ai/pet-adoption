@@ -1,24 +1,24 @@
 apiVersion: 1
 
 datasources:
-  - name: PostgreSQL_metrics_training
+  - name: Postgres_metrics_training
     type: postgres
     access: proxy
     url: db.:5432
-    database: training_monitoring
-    user: 'admin'
+    user: admin
     secureJsonData:
-      password: 'admin'
+      password: admin
     jsonData:
+      database: training_monitoring
       sslmode: 'disable'
 
-  - name: PostgreSQL_metrics_batch
+  - name: PostgreSQL_metrics_prediction
     type: postgres
     access: proxy
     url: db.:5432
-    database: predict_monitoring
-    user: 'admin'
+    user: admin
     secureJsonData:
-      password: 'admin'
+      password: admin
     jsonData:
+      database: predict_monitoring
       sslmode: 'disable'

@@ -1,3 +1,4 @@
+from datetime import date
 from pathlib import Path
 
 import mlflow
@@ -15,6 +16,11 @@ def get_artifact_path() -> Path:
     """Returns the path to the artifact folder."""
     project_root = get_project_root()
     return project_root / "artifacts"
+
+
+def date_today_str() -> str:
+    """Returns the current date as a string."""
+    return date.today().strftime("%Y-%m-%d")
 
 
 def log_confusion_matrix_to_mlflow(y_true: pd.Series, y_pred: pd.Series) -> None:

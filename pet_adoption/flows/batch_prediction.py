@@ -1,5 +1,4 @@
 import os
-from datetime import date
 
 from dotenv import load_dotenv
 from prefect import flow
@@ -15,6 +14,7 @@ from pet_adoption.flows.tasks import (
     save_dict_in_s3,
     store_data_in_s3,
 )
+from pet_adoption.utils import date_today_str
 
 load_dotenv()
 
@@ -32,8 +32,7 @@ def batch_prediction_flow() -> None:
     5. Read the training data from S3 and apply the loaded models to get predictions.
     6. Create monitoring metrics for the test set based on the train set.
     """
-    today = date.today()
-    batch_date = today.strftime("%Y-%m-%d")
+    batch_date = date_today_str()
 
     # read test data from S3
     df_test = read_data_from_s3(bucket_name=os.getenv("S3_BUCKET"), file_key="data/df_test.csv")

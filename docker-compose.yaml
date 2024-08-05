@@ -28,6 +28,7 @@ services:
 
   grafana:
     image: grafana/grafana
+    user: "427"
     restart: always
     ports:
       - "3000:3000"
@@ -44,4 +45,4 @@ networks:
     driver: bridge
 
 volumes:
-  grafana_data:
+  grafana_data: {}
