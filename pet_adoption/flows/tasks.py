@@ -1,11 +1,12 @@
 import json
 import os
 from io import StringIO
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 import boto3
 import mlflow
 import pandas as pd
+from botocore.exceptions import ClientError
 from catboost import CatBoostClassifier, Pool
 from evidently import ColumnMapping
 from evidently.metrics import ColumnDriftMetric, DatasetDriftMetric, DatasetMissingValuesMetric
@@ -160,7 +161,7 @@ def train_model(
     num_features: List[str] = NUM_FEATURES,
     cat_features: List[str] = CAT_FEATURES,
     random_state: int = RANDOM_STATE,
-) -> Tuple[CatBoostClassifier, pd.DataFrame, pd.DataFrame]:
+) -> Tuple[CatBoostClassifier, pd.DataFrame, pd.DataFrame, str]:
     """
     Train a CatBoost classifier on the training data and evaluate the model
     performance on the validation data.
@@ -171,7 +172,7 @@ def train_model(
     :param num_features: the list of numerical features, defaults to NUM_FEATUERS
     :param cat_features: the list of categorical features, defaults to CAT_FEATURES
     :param random_state: the random seed, defaults to RANDOM_STATE
-    :return: the fitted CatBoost classifier and the train and validation sets including the model prediction
+    :return: the fitted model, the train and validation sets including the model prediction and the MLflow run ID
     """
     # training set
     X_train = df_train[num_features + cat_features]
@@ -254,7 +255,24 @@ def train_model(
         else:
             print("The challenger model did not meet the recall threshold of 0.9 on the validation set.")
 
-    return model, df_train, df_val
+    return model, df_train, df_val, run_id
+
+
+@task(name="Store MLflow Run ID")
+def store_json_in_s3(dict_obj: Dict, bucket_name: str, file_key: str) -> None:
+    """
+    Store a dictionary as a JSON file in an S3 bucket.
+
+    :param dict_obj: the dictionary to store
+    :param bucket_name: the name of the S3 bucket
+    :param file_key: the full path to the file
+    """
+    # Create an S3 resource
+    s3 = boto3.resource("s3")
+    # Convert the dictionary to a JSON string
+    json_string = json.dumps(dict_obj)
+    # Write the JSON string to the S3 bucket
+    s3.Object(bucket_name, file_key).put(Body=json_string)
 
 
 @task(name="Monitoring metrics")
@@ -367,3 +385,35 @@ def apply_model(df: pd.DataFrame, model: PyFuncModel) -> pd.DataFrame:
     predictions = model.predict(test_pool)
     df["prediction"] = predictions
     return df
+
+
+@task(name="Read Latest Production Model Run ID")
+def get_production_model_run_id(bucket_name: str, file_key: str = "production_model.json") -> str:
+    """
+    Read the latest production model run ID from the JSON file in S3.
+
+    :param bucket_name: the name of the S3 bucket
+    :param file_key: the full path to the JSON file, defaults to "production_model.json"
+    :return: the latest production model run ID
+    """
+    # Create an S3 client
+    s3 = boto3.client("s3")
+
+    try:
+        # Read the JSON file from the S3 bucket
+        response = s3.get_object(Bucket=bucket_name, Key=file_key)
+        json_string = response["Body"].read().decode("utf-8")
+
+        # Parse the JSON string
+        data = json.loads(json_string)
+
+        # Get the latest production model run ID
+        latest_run_id = data["run_id"]
+
+        return latest_run_id
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "NoSuchKey":
+            print(f"The file '{file_key}' does not exist in the bucket '{bucket_name}'.")
+            return None
+        else:
+            raise e

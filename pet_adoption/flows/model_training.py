@@ -11,6 +11,7 @@ from pet_adoption.flows.tasks import (
     save_dict_in_s3,
     setup_mlflow,
     store_data_in_s3,
+    store_json_in_s3,
     stratified_split,
     train_model,
 )
@@ -44,7 +45,11 @@ def training_flow() -> None:
     store_data_in_s3(df_test, os.getenv("S3_BUCKET"), "data/df_test.csv")
 
     # train the model
-    model, train_df, val_df = train_model(df_train, df_val)
+    _, train_df, val_df, run_id = train_model(df_train, df_val)
+
+    # save the MLflow run ID of the production model in S3
+    run_id_dict = {"run_id": run_id}
+    store_json_in_s3(dict_obj=run_id_dict, bucket_name=os.getenv("S3_BUCKET_MLFLOW"), file_key="production_model.json")
 
     # monitoring metrics
     metrics_dict = monitor_model_performance(reference_data=train_df, current_data=val_df)

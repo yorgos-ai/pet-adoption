@@ -6,6 +6,7 @@ from prefect import flow
 from pet_adoption.flows.tasks import (
     apply_model,
     extract_report_data,
+    get_production_model_run_id,
     load_model,
     monitor_model_performance,
     preprocess_data,
@@ -51,9 +52,12 @@ def batch_prediction_flow() -> None:
     # preprocess the data
     df = preprocess_data(df)
 
+    # get the MLflow run id of the production model
+    RUN_ID = get_production_model_run_id(bucket_name=os.getenv("S3_BUCKET_MLFLOW"), file_key="production_model.json")
+    print(f"RUN_ID: {RUN_ID}")
+
     # load the model
     model = load_model(run_id=RUN_ID)
-    print(type(model))
 
     # make batch predictions
     df = apply_model(df, model)
@@ -62,7 +66,7 @@ def batch_prediction_flow() -> None:
     df_train = read_data_from_s3(bucket_name=os.getenv("S3_BUCKET"), file_key="data/df_train.csv")
     df_train = apply_model(df_train, model)
 
-    # monitor model performance
+    # Evidently batch prediction monitoring metrics
     metrics_dict = monitor_model_performance(reference_data=df_train, current_data=df)
     save_dict_in_s3(metrics_dict, os.getenv("S3_BUCKET"), "data/monitoring_metrics_prediction.json")
     extract_report_data(batch_date="2024-08-03", metrics_dict=metrics_dict, db_name="predict_monitoring")
