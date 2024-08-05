@@ -42,3 +42,6 @@ CREATE TABLE IF NOT EXISTS drift_dataset (
     share_of_drifted_columns decimal,
     dataset_drift boolean
 );
+
+CREATE DATABASE prefect;
+GRANT ALL PRIVILEGES ON DATABASE prefect TO admin;

@@ -8,7 +8,7 @@ services:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
     volumes:
-      - ./postgres:/var/lib/postgresql/data
+      - db:/var/lib/postgresql/data
       - ./pet_adoption/scripts/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
     ports:
       - "5432:5432"
@@ -40,6 +40,40 @@ services:
       - backend
       - frontend
 
+  prefect-server:
+    image: prefecthq/prefect:2.20-python3.10
+    restart: always
+    volumes:
+      - prefect:/root/.prefect
+    entrypoint: ["/opt/prefect/entrypoint.sh", "prefect", "server", "start"]
+    environment:
+      PREFECT_UI_URL: http://127.0.0.1:4200/api
+      PREFECT_API_URL: http://127.0.0.1:4200/api
+      # If you want to access Prefect Server UI from anywhere other than the Docker host machine, you will need to change
+      # PREFECT_UI_URL and PREFECT_API_URL to match the external hostname/IP of the host machine. For example:
+      #- PREFECT_UI_URL=http://external-ip:4200/api
+      #- PREFECT_API_URL=http://external-ip:4200/api
+      PREFECT_SERVER_API_HOST: 0.0.0.0
+      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://admin:admin@db:5432/prefect
+    ports:
+      - "4200:4200"
+    depends_on:
+      db:
+        condition: service_started
+    networks:
+      - backend
+      - frontend
+
+#   ## Prefect Agent
+#   prefect-agent:
+#     image: prefecthq/prefect:2.20-python3.10
+#     restart: always
+#     entrypoint: ["/opt/prefect/entrypoint.sh", "prefect", "agent", "start", "-q", "my_queue"]
+#     environment:
+#       - PREFECT_API_URL=http://server:4200/api
+# #       Use PREFECT_API_KEY if connecting the agent to Prefect Cloud
+# #     - PREFECT_API_KEY=YOUR_API_KEY
+
 networks:
   backend:
     driver: bridge
@@ -47,4 +81,5 @@ networks:
     driver: bridge
 
 volumes:
-  grafana_data: {}
+  db:
+  prefect:
