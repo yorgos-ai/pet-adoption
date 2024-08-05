@@ -1,10 +1,12 @@
 import json
 import os
+from datetime import datetime, timedelta
 from io import StringIO
 from typing import Dict, List, Tuple
 
 import boto3
 import mlflow
+import numpy as np
 import pandas as pd
 from botocore.exceptions import ClientError
 from catboost import CatBoostClassifier, Pool
@@ -417,3 +419,42 @@ def get_production_model_run_id(bucket_name: str, file_key: str = "production_mo
             return None
         else:
             raise e
+
+
+@task(name="Make Batch Predictions")
+def simulate_batch_predictions(
+    df_train: pd.DataFrame, df_test: pd.DataFrame, date_time: datetime, model: PyFuncModel
+) -> None:
+    """
+    Simulate hourly batch predictions by splitting the test set in 12 chunks.
+
+    :param df_train: the training data
+    :param df_test: the test data
+    :param date_time: the date used to create batches
+    :param model: the loaded model
+    """
+    # simulate hourly batch predictions by splitting the test set in 12 chunks
+    batch_size = 12
+    batch_dfs = np.array_split(df_test, batch_size)
+
+    for idx, batch_df in enumerate(batch_dfs):
+        batch_date = date_time + timedelta(hours=idx + 1)
+        batch_date_str = batch_date.strftime("%Y-%m-%d %H:%M:%S")
+        batch_df["batch_date"] = batch_date
+
+        # apply the model to the batch
+        batch_df = apply_model(batch_df, model)
+
+        # store the batch dataframe in S3
+        store_data_in_s3(
+            df=batch_df,
+            bucket_name=os.getenv("S3_BUCKET"),
+            file_key=f"predictions/df_test-{batch_date_str.replace('-', '_')}.csv",
+        )
+
+        # create monitoring metrics for the batch
+        metrics_dict = monitor_model_performance(reference_data=df_train, current_data=batch_df)
+        save_dict_in_s3(metrics_dict, os.getenv("S3_BUCKET"), f"prediction_metrics/{batch_date_str}.json")
+
+        # extract the monitoring metrics and store them in a PostgreSQL database
+        extract_report_data(batch_date=batch_date_str, metrics_dict=metrics_dict, db_name="predict_monitoring")

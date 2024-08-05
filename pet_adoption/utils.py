@@ -18,9 +18,14 @@ def get_artifact_path() -> Path:
     return project_root / "artifacts"
 
 
-def date_today_str() -> str:
-    """Returns the current date as a string."""
-    return date.today().strftime("%Y-%m-%d")
+def date_today_str(date_format: str = "%Y-%m-%d") -> str:
+    """
+    Returns the current date as a string.
+
+    :param date_format: the date format, defaults to "%Y-%m-%d"
+    :return: today's date as a string
+    """
+    return date.today().strftime(date_format)
 
 
 def log_confusion_matrix_to_mlflow(y_true: pd.Series, y_pred: pd.Series) -> None:
