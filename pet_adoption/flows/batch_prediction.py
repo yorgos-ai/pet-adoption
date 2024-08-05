@@ -16,23 +16,7 @@ from pet_adoption.flows.tasks import (
     store_data_in_s3,
 )
 
-TARGET = "AdoptionLikelihood"
-NUM_FEATURES = [
-    "AgeMonths",
-    "WeightKg",
-    "Vaccinated",
-    "HealthCondition",
-    "TimeInShelterDays",
-    "AdoptionFee",
-    "PreviousOwner",
-]
-CAT_FEATURES = ["PetType", "Breed", "Color", "Size"]
-RANDOM_STATE = 42
-
 load_dotenv()
-
-
-RUN_ID = "9d7c094197a34b93bee0d77a1b042075"
 
 
 @flow
@@ -83,7 +67,7 @@ def batch_prediction_flow() -> None:
     save_dict_in_s3(metrics_dict, os.getenv("S3_BUCKET"), "data/monitoring_metrics_prediction.json")
     extract_report_data(batch_date=batch_date, metrics_dict=metrics_dict, db_name="predict_monitoring")
 
-    return df_test
+    return None
 
 
 if __name__ == "__main__":
