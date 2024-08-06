@@ -40,6 +40,25 @@ services:
       - backend
       - frontend
 
+  # mlflow:
+  #   build: .
+  #   image: mlflow
+  #   container_name: mlflow
+  #   environment:
+  #     MLFLOW_S3_ENDPOINT_URL: s3://mlflow-artifacts-pet-adoption
+  #   restart: always
+  #   # depends_on:
+  #   #   db:
+  #   #     condition: service_started
+  #   ports:
+  #     - "5000:5000"
+  #   networks:
+  #     - backend
+  #   command: >
+  #     mlflow server
+  #     --backend-store-uri sqlite:///mlflow.db
+  #     --default-artifact-root s3://mlflow-artifacts-pet-adoption
+
   prefect-server:
     image: prefecthq/prefect:2.20-python3.10
     restart: always

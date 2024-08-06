@@ -103,16 +103,11 @@ The MLflow server can be accessed at http://127.0.0.1:5000.
 
 ## Workflow orchestration with Prefect
 This project uses Prefect for workflow orchestration. To start the Prefect server, you can execute the following command:
-```
-prefect server start
-```
-While the Prefect server is running, open a new terminal and execute:
-```
-prefect config set PREFECT_API_URL=http://127.0.0.1:4200/api
-```
+
 The Prefect server can be accessed at http://127.0.0.1:4200.
-```
+
+<!-- ```
 $ prefect work-pool create --type process process-pool
 $ prefect worker start --pool process-pool
 $ prefect deployment run 'training-flow/pet-adoption-local'
-```
+``` -->
