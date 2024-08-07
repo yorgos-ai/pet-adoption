@@ -95,32 +95,40 @@ $ pre-commit install
 This project uses two S3 buckets. The `pet-adoption-mlops` is a general purpose S3 bucket for storing artifacts and the second, `mlflow-artifacts-pet-adoption` is the artifact folder for the MLflow tracking server.
 
 ## Build project
-To start all the required services, you can run the following command:
+To start upthe application stack run the following command:
 ```
 make start_services
 ```
-This command will execute the docker-compose.yaml file, which initates all the Docker containers used in this project.
+This command will run the docker-compose.yaml file, which initiates all the Docker containers for all teh necessary applications that are used in this project.
 
 ## Experiment tracking with MLflow
-Execute the following command to start the MLflow server:
+Run the following command to start the MLflow server:
 ```
 $ make mlflow
 ```
 The MLflow server can be accessed at http://127.0.0.1:5000.
+
+|   service   | port  | Interface  |          url           |       description       |
+|------------ |------ |----------- |----------------------- |------------------------ |
+| Prefect     | 4200  | 127.0.0.1  | http://127.0.0.1:4200  | Prefect UI              |
+| MLFlow      | 5000  | 127.0.0.1  | http://127.0.0.1:5000  | MLFlow UI               |
+| Grafana     | 3000  | 127.0.0.1  | http://127.0.0.1:3000  | Grafana UI              |
+| PostgreSQL  | 5432  | 127.0.0.1  | http://127.0.0.1:5432  | Postgres database       |
 
 ## Workflow orchestration with Prefect
 This project uses Prefect for workflow orchestration.
 
 The Prefect server can be accessed at http://127.0.0.1:4200.
 
+Run both training and predictino flows:
+```
+make run_flows
+```
+You can access the Prefect UI to see the executino fo both workflows.
+
+
 To deploy the Prefect workflows, run the following command:
 ```
 make prefect_deploy
 ```
 This command will deploy the workflows and start the Prefect Agent.
-
-<!-- ```
-$ prefect work-pool create --type process process-pool
-$ prefect worker start --pool process-pool
-$ prefect deployment run 'training-flow/pet-adoption-local'
-``` -->

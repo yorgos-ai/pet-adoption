@@ -24,6 +24,7 @@ run_flows:
 prefect_deploy:
 	poetry shell
 	python pet_adoption/flows/prefect_deploy.py
-	prefect agent start --work-queue "main"
+	prefect work-pool create --type process main_pool
+	prefect worker start --pool main_pool
 
 e2e_flow: start_services run_flows
