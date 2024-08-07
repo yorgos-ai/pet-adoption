@@ -33,6 +33,7 @@ psycopg2 = "^2.9.9"
 pre-commit = "^3.7.1"
 ruff = "^0.5.4"
 mypy = "^1.11.0"
+pytest = "^8.3.2"
 
 [build-system]
 requires = ["poetry-core"]
@@ -47,3 +48,6 @@ select = ["E", "F", "I"]
 
 [tool.ruff.format]
 quote-style = "double"
+
+[tool.bandit.assert_used]
+skips = ["*_test.py"]
