@@ -6,7 +6,7 @@ mlflow:
 
 tests:
 	poetry shell
-	pytest tests -v
+	pytest -v --cov-report term --cov=pet_adoption tests/
 
 e2e_flow:
 	poetry shell
