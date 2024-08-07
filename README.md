@@ -94,6 +94,13 @@ $ pre-commit install
 ### 3. Create S3 buckets
 This project uses two S3 buckets. The `pet-adoption-mlops` is a general purpose S3 bucket for storing artifacts and the second, `mlflow-artifacts-pet-adoption` is the artifact folder for the MLflow tracking server.
 
+## Build project
+To start all the required services, you can run the following command:
+```
+make start_services
+```
+This command will execute the docker-compose.yaml file, which initates all the Docker containers used in this project.
+
 ## Experiment tracking with MLflow
 Execute the following command to start the MLflow server:
 ```
@@ -102,9 +109,15 @@ $ make mlflow
 The MLflow server can be accessed at http://127.0.0.1:5000.
 
 ## Workflow orchestration with Prefect
-This project uses Prefect for workflow orchestration. To start the Prefect server, you can execute the following command:
+This project uses Prefect for workflow orchestration.
 
 The Prefect server can be accessed at http://127.0.0.1:4200.
+
+To deploy the Prefect workflows, run the following command:
+```
+make prefect_deploy
+```
+This command will deploy the workflows and start the Prefect Agent.
 
 <!-- ```
 $ prefect work-pool create --type process process-pool

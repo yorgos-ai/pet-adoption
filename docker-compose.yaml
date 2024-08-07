@@ -83,16 +83,6 @@ services:
       - backend
       - frontend
 
-#   ## Prefect Agent
-#   prefect-agent:
-#     image: prefecthq/prefect:2.20-python3.10
-#     restart: always
-#     entrypoint: ["/opt/prefect/entrypoint.sh", "prefect", "agent", "start", "-q", "my_queue"]
-#     environment:
-#       - PREFECT_API_URL=http://server:4200/api
-# #       Use PREFECT_API_KEY if connecting the agent to Prefect Cloud
-# #     - PREFECT_API_KEY=YOUR_API_KEY
-
 networks:
   backend:
     driver: bridge
