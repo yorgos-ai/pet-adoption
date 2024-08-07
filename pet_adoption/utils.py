@@ -1,6 +1,8 @@
+import json
 from datetime import date
 from pathlib import Path
 
+import boto3
 import mlflow
 import pandas as pd
 
@@ -54,3 +56,19 @@ def log_classification_report_to_mlflow(y_true: pd.Series, y_pred: pd.Series) ->
     cls_report_path = Path.joinpath(artifact_path, cls_report_name)
     plot_classification_report(y_true=y_true, y_pred=y_pred, save_path=cls_report_path)
     mlflow.log_artifact(cls_report_path)
+
+
+def save_dict_in_s3(data: dict, bucket: str, file_path: str) -> None:
+    """
+    Save a dictionary as a JSON file in an S3 bucket.
+
+    :param data: the dictionary to save
+    :param bucket: the S3 bucket name
+    :param file_path: the full path to save the data
+    """
+    # Create an S3 resource
+    s3 = boto3.resource("s3")
+    # Convert the dictionary to a JSON string
+    json_str = json.dumps(data)
+    # Write the JSON string to the S3 bucket
+    s3.Object(bucket, file_path).put(Body=json_str)

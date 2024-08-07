@@ -8,7 +8,7 @@ from pet_adoption.flows.tasks import (
     monitor_model_performance,
     preprocess_data,
     read_data,
-    save_dict_in_s3,
+    save_monitoring_metrics_in_s3,
     setup_mlflow,
     store_data_in_s3,
     store_json_in_s3,
@@ -55,7 +55,9 @@ def training_flow() -> None:
 
     # monitoring metrics
     metrics_dict = monitor_model_performance(reference_data=train_df, current_data=val_df)
-    save_dict_in_s3(metrics_dict, os.getenv("S3_BUCKET"), "data/monitoring_metrics_training.json")
+    save_monitoring_metrics_in_s3(
+        metrics_dict=metrics_dict, bucket_name=os.getenv("S3_BUCKET"), file_key="data/monitoring_metrics_training.json"
+    )
     extract_report_data(batch_date=batch_date, metrics_dict=metrics_dict, db_name="training_monitoring")
 
 

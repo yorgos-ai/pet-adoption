@@ -32,12 +32,3 @@ def create_bucket(s3_client):
     location = {"LocationConstraint": "eu-west-1"}
     s3_client.create_bucket(Bucket="test_bucket", CreateBucketConfiguration=location)
     yield s3_client
-
-
-# def upload_csv(s3_bucket):
-#     """Pytest fixture that mocks uploading a CSV file to the S3 bucket"""
-#     def _upload_csv(file_name, content):
-#         s3 = boto3.client("s3")
-#         s3.put_object(Bucket="test_bucket", Key=file_name, Body=content)
-
-# return _upload_csv

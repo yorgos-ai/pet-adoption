@@ -21,7 +21,12 @@ from sqlalchemy import create_engine
 
 from pet_adoption.evaluate import classification_metrics
 from pet_adoption.feature_engineering import numerical_cols_as_float
-from pet_adoption.utils import get_project_root, log_classification_report_to_mlflow, log_confusion_matrix_to_mlflow
+from pet_adoption.utils import (
+    get_project_root,
+    log_classification_report_to_mlflow,
+    log_confusion_matrix_to_mlflow,
+    save_dict_in_s3,
+)
 
 TARGET = "AdoptionLikelihood"
 NUM_FEATURES = [
@@ -304,7 +309,7 @@ def monitor_model_performance(reference_data: pd.DataFrame, current_data: pd.Dat
 
 
 @task(name="Store Monitoring Metrics")
-def save_dict_in_s3(metrics_dict: dict, bucket_name: str, file_key: str) -> None:
+def save_monitoring_metrics_in_s3(metrics_dict: dict, bucket_name: str, file_key: str) -> None:
     """
     Store a dictionary as a JSON file in an S3 bucket.
 
@@ -312,12 +317,7 @@ def save_dict_in_s3(metrics_dict: dict, bucket_name: str, file_key: str) -> None
     :param bucket_name: the name of the S3 bucket
     :param file_key: the full path to the JSON file
     """
-    # Create an S3 resource
-    s3 = boto3.resource("s3")
-    # Convert the dictionary to a JSON string
-    json_string = json.dumps(metrics_dict)
-    # Write the JSON string to the S3 bucket
-    s3.Object(bucket_name, file_key).put(Body=json_string)
+    save_dict_in_s3(data=metrics_dict, bucket=bucket_name, file_path=file_key)
 
 
 @task(name="extract_batch_report_data")
@@ -454,7 +454,9 @@ def simulate_batch_predictions(
 
         # create monitoring metrics for the batch
         metrics_dict = monitor_model_performance(reference_data=df_train, current_data=batch_df)
-        save_dict_in_s3(metrics_dict, os.getenv("S3_BUCKET"), f"prediction_metrics/{batch_date_str}.json")
+        save_dict_in_s3(
+            data=metrics_dict, bucket=os.getenv("S3_BUCKET"), file_path=f"prediction_metrics/{batch_date_str}.json"
+        )
 
         # extract the monitoring metrics and store them in a PostgreSQL database
         extract_report_data(batch_date=batch_date_str, metrics_dict=metrics_dict, db_name="predict_monitoring")
