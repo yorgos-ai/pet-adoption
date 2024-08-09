@@ -1,4 +1,4 @@
-.PHONY: tests start_services run_flows e2e_flow
+.PHONY: tests mllfow start_services run_flows e2e_flow build
 
 mlflow:
 	poetry shell
@@ -12,6 +12,8 @@ start_services:
 	poetry shell
 	dotenv
 	docker-compose up --build -d
+
+build: start_services mlflow
 
 kill_services:
 	docker-compose down --remove-orphans --volumes
@@ -27,4 +29,4 @@ prefect_deploy:
 	prefect work-pool create --type process main_pool
 	prefect worker start --pool main_pool
 
-e2e_flow: start_services run_flows
+e2e_flow: build run_flows

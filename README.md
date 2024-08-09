@@ -17,6 +17,8 @@ Data source: [Predict Pet Adoption Status Dataset (Kaggle)](https://www.kaggle.c
 
 The Pet Adoption Dataset provides a comprehensive look into various factors that can influence the likelihood of a pet being adopted from a shelter. This dataset includes detailed information about pets available for adoption, covering various characteristics and attributes.
 
+The data set consists of 2008 records. The complete csv file is located under the `data` directory of the repository. Due to the limited number of data records available, the data pre-processing is adjusted to accommodate for that. During the training flow, the dataset is splitted in three separate sets (train, validation and test). All the subsets as well as the complete initial dataset are stored in S3. The training pipeline uses the train and validation sets to train a CatBoost classifier and evaluate the model performance on the validation set. The test set is used in the prediction pipeline to simulate hourly batch predictions.
+
 ## Pre-requisites
 
 ### 1. Create an IAM user
@@ -97,38 +99,62 @@ This project uses two S3 buckets. The `pet-adoption-mlops` is a general purpose 
 ## Build project
 To start upthe application stack run the following command:
 ```
-make start_services
+make build
 ```
-This command will run the docker-compose.yaml file, which initiates all the Docker containers for all teh necessary applications that are used in this project.
-
-## Experiment tracking with MLflow
-Run the following command to start the MLflow server:
-```
-$ make mlflow
-```
-The MLflow server can be accessed at http://127.0.0.1:5000.
+This command initiates all the necessary applications that are used in this project. You can find the complete list of all services as well as their url in the table below.
 
 |   service   | port  | Interface  |          url           |       description       |
 |------------ |------ |----------- |----------------------- |------------------------ |
 | Prefect     | 4200  | 127.0.0.1  | http://127.0.0.1:4200  | Prefect UI              |
-| MLFlow      | 5000  | 127.0.0.1  | http://127.0.0.1:5000  | MLFlow UI               |
+| MLflow      | 5000  | 127.0.0.1  | http://127.0.0.1:5000  | MLflow UI               |
 | Grafana     | 3000  | 127.0.0.1  | http://127.0.0.1:3000  | Grafana UI              |
-| PostgreSQL  | 5432  | 127.0.0.1  | http://127.0.0.1:5432  | Postgres database       |
+| Adminer     | 8080  | 127.0.0.1  | http://127.0.0.1:8080  | Adminer UI              |
+<!-- | PostgreSQL  | 5432  | 127.0.0.1  | http://127.0.0.1:5432  | Postgres database       | -->
 
 ## Workflow orchestration with Prefect
-This project uses Prefect for workflow orchestration.
+This project uses Prefect to orchestration and deploy the workflows.
 
-The Prefect server can be accessed at http://127.0.0.1:4200.
+There are two main flows in this project, the `training_flow` and the `batch_prediction_flow`. The Python scripts for both flows can be accessed at [pet_adoption/flows/](pet_adoption/flows/) directory.
 
-Run both training and predictino flows:
+Once you have build the project services you can run the training and prediction flows in a couple of ways:
+
+#### 1. Execute the flows from CLI
+
+To run both training and prediction flows, type the following command in your CLI:
 ```
 make run_flows
 ```
-You can access the Prefect UI to see the executino fo both workflows.
+This make command will first execute the training flow. Once the first flows finishes successfully, it will execute the prediction flow. You can access the Prefect UI to see the execution of both flows.
 
+
+#### 2. Deploy the Prefect flows and manually run them from Prefect UI
 
 To deploy the Prefect workflows, run the following command:
 ```
 make prefect_deploy
 ```
-This command will deploy the workflows and start the Prefect Agent.
+This command will deploy the workflows, create a Prefect worker and finally start the worker. Once this step finishes, you can access Prefect UI and run the flows manually.
+
+## Experiment tracking with MLflow
+MLflow Tracking Server is used to track the experiments and log training artifacts and metrics. Once the training pipeline executes, you can access MLflow UI to view the experiment run and all the relevant metrics and artifacts.
+
+## Monitoring with Evidently
+
+Both flows are monitored using Evidently. The metrics are collected during the flow runs and are stored in a Postgres DB. Grafana connects to tehe Postgres DB to get the metrics and build monirting dashboards. To view the dashboard, go to http://127.0.0.1:3000 and navigate to the `Dahsboards` section on the left panel.
+
+## Unit tests
+Run the unit tests and generate the coverage report:
+```
+make tests
+```
+
+## Linting and formatting
+This project uses Ruff for both linting and formatting. Details about the configuration can be found in the [pyproject.toml](pyproject.toml) file.
+
+## Pre-commit hooks
+Pre-commit hooks are used for code linting/formatting and other checks before every commit. You can find the complete configuration in the [.pre-commit-config.yaml](.pre-commit-config.yaml) file.
+
+## Backlog for future improvements
+1. Integration tests
+2. IaC with Terraform
+3. AWS EventBridge and SQS to trigger the prediction pipeline automatically when a new test set is uploaded in S3.
