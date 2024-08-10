@@ -111,6 +111,9 @@ This command initiates all the necessary applications that are used in this proj
 | Adminer     | 8080  | 127.0.0.1  | http://127.0.0.1:8080  | Adminer UI              |
 <!-- | PostgreSQL  | 5432  | 127.0.0.1  | http://127.0.0.1:5432  | Postgres database       | -->
 
+> [!NOTE]
+> You might have to manually set the port-forwarding from your machine in order to be able to access the URL links above.
+
 ## Workflow orchestration with Prefect
 This project uses Prefect to orchestration and deploy the workflows.
 
