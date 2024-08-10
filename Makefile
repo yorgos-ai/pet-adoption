@@ -1,5 +1,10 @@
 .PHONY: tests mllfow start_services run_flows e2e_flow build
 
+
+set_up:
+	chmod +x pet_adoption/scripts/set_up.sh
+	bash pet_adoption/scripts/set_up.sh
+
 mlflow:
 	poetry shell
 	mlflow server --backend-store-uri 'sqlite:///mlflow.db' --default-artifact-root 's3://mlflow-artifacts-pet-adoption'
