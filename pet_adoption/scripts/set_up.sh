@@ -43,15 +43,16 @@ echo "Docker Compose version $(docker-compose --version) installed successfully.
 echo "Installing Pyenv..."
 sudo apt install -y make build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev libpq-dev
 curl https://pyenv.run | bash
-echo -e 'export PYENV_ROOT="$HOME/.pyenv"\nexport PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.bashrc
-echo -e 'eval "$(pyenv init --path)"\neval "$(pyenv init -)"' >> ~/.bashrc
+echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.bashrc
+echo '[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.bashrc
+echo 'eval "$(pyenv init -)"' >> ~/.bashrc
 source ~/.bashrc
 echo "Pyenv version $(pyenv --version) installed successfully."
 
 # Install Poetry
 echo "Installing Poetry..."
 curl -sSL https://install.python-poetry.org | python3 -
-echo 'export PATH="/home/$(user)/.local/bin:$PATH"' >> ~/.bashrc
+echo 'export PATH="/home/ubuntu/.local/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 echo "Poetry version $(poetry --version) installed successfully."
 

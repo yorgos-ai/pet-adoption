@@ -29,7 +29,36 @@ https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html
 ### 2. Create an EC2 instance
 Create an EC2 instance. A remote machine with 8 GB of RAM should be more than enough for this project.
 
-Since I am using WSL in Windows 10 with Ubuntu 22.04 as my local machine, I chose to create an Ubuntu 22.04 EC2 instance, to make sure that both my local and remote machines are using the same OS.
+Log in in the AWS concole using the IAM role you created in the previous step. Navigate to EC2 service and click on `Instances` and then `Launch an instance`.
+1. Add a name for your EC2 instance.
+2. Go to the Ubuntu OS images and from the drop down menu select the `Ubuntu Server 22.04` image.
+3. Select `t2.xlarge` as the instance type.
+4. On the `Key pair (login)` panel click on `Create a new key pair`. Enter a name for your key-pair .pem file and then click on `Create key pair`. Save the .pem file on your local machine. YOu will need it later to connect from your local machine to the remote EC2 instance using SSH.
+5. On the `Configure storage` panel, edit the amount of disk storage to 30 GiB.
+6. Click on `Launch instance`. The EC2 instance will be launched and started automatically.
+
+### 3. Configure SSH from local machine to EC2 instance
+In your local mahcine, navigate to the .ssh folder.
+1. Copy the .pem file you downloaded earlier in the .ssh directory.
+2. Create a file named `config`.
+3. Add the following settings in the config file:
+```
+Host <the name of the EC2 instance you created>
+    HostName <the Public IPv4 address of the EC2 instance>
+    User ubuntu
+    IdentityFile <the path to the .pem file on your local machine>
+    StrictHostKeyChecking no
+```
+4. Open VS code in you rlocal machine and install the `SSH remote` extension.
+5. Once the extension is installed, click on `Remote` and then `Connect to Host` and select the name of your EC2 instance.
+
+### 4. Clone the project repository using HTTPS
+```
+$ git clone https://github.com/yorgos-ai/pet-adoption.git
+$ cd pet-adoption/
+$ code .
+$ sudo apt install make
+```
 
 #### Install aws-cli
 
