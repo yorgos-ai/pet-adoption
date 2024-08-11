@@ -18,6 +18,9 @@ else
     echo "Please clone the 'pet-adoption' Git repository and run the make command from the 'pet-adoption' directory."
 fi
 
+# Update the repositories
+sudo apt update
+
 # Install AWS CLI
 echo "Installing AWS CLI..."
 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
@@ -46,7 +49,7 @@ curl https://pyenv.run | bash
 echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.bashrc
 echo '[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.bashrc
 echo 'eval "$(pyenv init -)"' >> ~/.bashrc
-# echo "Pyenv version $(pyenv --version) installed successfully."
+echo "Pyenv installed successfully."
 
 # Install Poetry
 echo "Installing Poetry..."
@@ -56,21 +59,8 @@ line_to_add='export PATH="/home/ubuntu/.local/bin:$PATH"'
 cp ~/.bashrc ~/.bashrc.backup
 # Insert the new line at the top of the .bashrc file
 sed -i '1i  export PATH="\/home\/ubuntu\/.local\/bin:\$PATH"' .bashrc
-# echo "Poetry version $(poetry --version) installed successfully."
+echo "Poetry installed successfully."
 
 source ~/.bashrc
 
-# # Install Python 3.10.12
-# echo "Installing Python 3.10.12..."
-# pyenv install 3.10.12
-# cd pet-adoption
-# pyenv local 3.10.12
-# pyenv shell
-
-# # Install project dependencies
-# echo "Installing project dependencies..."
-# poetry env use 3.10.12
-# poetry shell
-# poetry install
-# pre-commit install
-# echo "Project dependencies installed successfully."
+echo "Setup completed successfully."

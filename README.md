@@ -49,7 +49,7 @@ Host <the name of the EC2 instance you created>
     IdentityFile <the path to the .pem file on your local machine>
     StrictHostKeyChecking no
 ```
-4. Open VS code in you rlocal machine and install the `SSH remote` extension.
+4. Open VS code in your local machine and install the `SSH remote` extension.
 5. Once the extension is installed, click on `Remote` and then `Connect to Host` and select the name of your EC2 instance.
 
 ### 4. Clone the project repository using HTTPS
@@ -57,72 +57,23 @@ Host <the name of the EC2 instance you created>
 $ git clone https://github.com/yorgos-ai/pet-adoption.git
 $ cd pet-adoption/
 $ code .
-$ sudo apt install make
 ```
 
-#### Install aws-cli
-
-```
-$ curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-$ sudo apt install unzip
-$ unzip awscliv2.zip
-$ sudo ./aws/install
-```
-
-#### Configure AWS credentials
-Set up your AWS profile by adding your `AWS_SECRET_ACCESS_KEY` and `AWS_ACCESS_KEY_ID` form step 1 to your AWS profile. These credentials will be automatically used to authenticate your IAM role and be able access AWS services from your EC2 instance.
-
-#### Install Docker
-
-To install Doker on Ubuntu 22.04, run the following commands:
-
+### 5. Run the init_setup.sh script
 ```
 $ sudo apt update
-$ sudo apt install docker.io
-$ sudo groupadd docker
-$ sudo usermod -aG docker ${USER}
+$ sudo apt install make
+$ make set_up
 ```
 
-#### Install docker-compose
-```
-$ wget https://github.com/docker/compose/releases/download/v2.29.1/docker-compose-linux-x86_64
-```
-
-#### Install Pyenv
-Pyenv allows us to install and handle multiple Python versions on a single machine. To install Pyenv on Ubuntu 22.04, you can follow the instructions in this excellent [Medium guide](https://medium.com/@aashari/easy-to-follow-guide-of-how-to-install-pyenv-on-ubuntu-a3730af8d7f0).
+### 6. Configure AWS credentials
+Set up your AWS profile by adding your `AWS_SECRET_ACCESS_KEY` and `AWS_ACCESS_KEY_ID` form step 1 to your AWS profile. These credentials will be automatically used to authenticate your IAM role and be able access AWS services from your EC2 instance.
 
 ```
-$ sudo apt install -y make build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev libpq-dev
-$ curl https://pyenv.run | bash
-$ echo -e 'export PYENV_ROOT="$HOME/.pyenv"\nexport PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.bashrc
-$ echo -e 'eval "$(pyenv init --path)"\neval "$(pyenv init -)"' >> ~/.bashrc
+aws configure --profile mlops-zoomcamp
 ```
 
-#### Install Poetry
-
-This project uses Poetry to manage Python dependecies.
-```
-$ curl -sSL https://install.python-poetry.org | python3 -
-```
-Once the installation is finished, Poetry will prompt you to add its bin directory to your PATH in order to be able to use poetry from your CLI. You can do that by running:
-```
-$ echo 'export PATH="/home/{user}/.local/bin:$PATH"' >> ~/.bashrc
-```
-Replace `{user}` with your user name.
-
-#### Configure Poetry with Pyenv
-This project uses Python 3.10.12. You can install this specific version with Pyenv and then use Poetry to install the dependencies.
-```
-$ pyenv install 3.10.12
-$ pyenv local 3.10.12
-$ pyenv shell
-$ poetry env use 3.10.12
-$ poetry shell
-$ poetry install
-$ pre-commit install
-```
-
-### 3. Create S3 buckets
+### 7. Create S3 buckets
 This project uses two S3 buckets. The `pet-adoption-mlops` is a general purpose S3 bucket for storing artifacts and the second, `mlflow-artifacts-pet-adoption` is the artifact folder for the MLflow tracking server.
 
 ## Build project
