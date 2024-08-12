@@ -77,6 +77,10 @@ Once the installation is finished, run the set up script.
 ```
 make init_setup
 ```
+
+> [!NOTE]
+> During the execution of the set_up.sh script, you might be prompted to restart some services. Press Enter a few times and the script will continue.
+
 This make command executes the [set_up.sh](pet_adoption/scripts/set_up.sh) script which does the following things:
 - Installs the AWS CLI
 - Installs Docker

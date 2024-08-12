@@ -14,9 +14,12 @@ pyenv:
 poetry:
 	poetry env use 3.10.12
 	poetry install
+
+pre-commit:
+	poetry shell
 	pre-commit install
 
-env_setup: pyenv poetry
+env_setup: pyenv poetry pre-commit
 
 # Applications
 

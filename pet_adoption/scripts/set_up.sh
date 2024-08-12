@@ -36,7 +36,7 @@ echo "Docker version $(docker --version) installed successfully."
 
 # Install Docker Compose
 echo "Installing Docker Compose..."
-wget https://github.com/docker/compose/releases/download/v2.29.1/docker-compose-linux-x86_64 -o "docker-compose"
+sudo apt install docker-compose
 echo "Docker Compose version $(docker-compose --version) installed successfully."
 
 # Install Pyenv
