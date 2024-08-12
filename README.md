@@ -9,70 +9,16 @@ It is the final project for the [MLOps Zoomcamp](https://github.com/DataTalksClu
 
 ## About the project
 
-The primary aim of this project is to develop an end-to-end machine learning system to predict the likelihood of a pet being adopted from a shelter. A considerable amount of attention is directed towards the implementation of MLOps practices, rather than the development of the machine learning model.
+The primary aim of this project is to develop an end-to-end machine learning system to predict the likelihood of a pet being adopted from a shelter.
+
+> [!NOTE]
+> The focus of this project is towards the implementation of MLOps practices rather than development of the ML model.
 
 ## About the data
 
 Data source: [Predict Pet Adoption Status Dataset (Kaggle)](https://www.kaggle.com/datasets/rabieelkharoua/predict-pet-adoption-status-dataset/data)
 
-The Pet Adoption Dataset provides a comprehensive look into various factors that can influence the likelihood of a pet being adopted from a shelter. This dataset includes detailed information about pets available for adoption, covering various characteristics and attributes. The data set consists of 2008 records. The complete csv file is located under the `data` directory of the repository.
-
-## Pre-requisites
-
-### 1. Create an IAM user
-Create AWS user with administrator access. Note the `AWS_SECRET_ACCESS_KEY` and `AWS_ACCESS_KEY_ID`.
-
-https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html
-
-### 2. Create an EC2 instance
-Create an EC2 instance. A remote machine with 8 GB of RAM should be more than enough for this project.
-
-Log in in the AWS concole using the IAM role you created in the previous step. Navigate to EC2 service and click on `Instances` and then `Launch an instance`.
-1. Add a name for your EC2 instance.
-2. Go to the Ubuntu OS images and from the drop down menu select the `Ubuntu Server 22.04` image.
-3. Select `t2.xlarge` as the instance type.
-4. On the `Key pair (login)` panel click on `Create a new key pair`. Enter a name for your key-pair .pem file and then click on `Create key pair`. Save the .pem file on your local machine. YOu will need it later to connect from your local machine to the remote EC2 instance using SSH.
-5. On the `Configure storage` panel, edit the amount of disk storage to 30 GiB.
-6. Click on `Launch instance`. The EC2 instance will be launched and started automatically.
-
-### 3. Configure SSH from local machine to EC2 instance
-In your local mahcine, navigate to the .ssh folder.
-1. Copy the .pem file you downloaded earlier in the .ssh directory.
-2. Create a file named `config`.
-3. Add the following settings in the config file:
-```
-Host <the name of the EC2 instance you created>
-    HostName <the Public IPv4 address of the EC2 instance>
-    User ubuntu
-    IdentityFile <the path to the .pem file on your local machine>
-    StrictHostKeyChecking no
-```
-4. Open VS code in your local machine and install the `SSH remote` extension.
-5. Once the extension is installed, click on `Remote` and then `Connect to Host` and select the name of your EC2 instance.
-
-### 4. Clone the project repository using HTTPS
-```
-$ git clone https://github.com/yorgos-ai/pet-adoption.git
-$ cd pet-adoption/
-$ code .
-```
-
-### 5. Run the init_setup.sh script
-```
-$ sudo apt update
-$ sudo apt install make
-$ make set_up
-```
-
-### 6. Configure AWS credentials
-Set up your AWS profile by adding your `AWS_SECRET_ACCESS_KEY` and `AWS_ACCESS_KEY_ID` form step 1 to your AWS profile. These credentials will be automatically used to authenticate your IAM role and be able access AWS services from your EC2 instance.
-
-```
-aws configure --profile mlops-zoomcamp
-```
-
-### 7. Create S3 buckets
-This project uses two S3 buckets. The `pet-adoption-mlops` is a general purpose S3 bucket for storing artifacts and the second, `mlflow-artifacts-pet-adoption` is the artifact folder for the MLflow tracking server.
+The Pet Adoption Dataset provides a comprehensive look into various factors that can influence the likelihood of a pet being adopted from a shelter. This dataset includes detailed information about pets available for adoption, covering various characteristics and attributes. The data set consists of 2008 records. The complete csv file is located under the [data](data) directory of the repository.
 
 ## Project solution architecture
 
@@ -83,7 +29,6 @@ There are two main flows in this project. The training flow uses the training an
 
 This section provides an overview of the training flow. First, it reads the csv file from the [data](data) directory of the repository. The preprocessing step casts all numerical columns as float type. Afterwards, the data is split in three subsets (train, validation and test) using statified splitting, to ensure that relative class frequencies is approximately preserved in each subset. All three subsets are stored in S3. A CatBoost classifier with default hyperparameters is trained on the training set. The validation set is used to evaluate the performance of the model and select the optimal number of trees. Experiment tracking is implemented using MLflow with a SQLite database as the backend. All model hyperparameters along with training and validation performance metrics are logged in Mlflow. Furthermore, the classification report and confusion matrix images from the validation set are tracked by MLflow. The MLflow Model Registry is used to promote the model to production stage if the recall metric on validation set exceeds the 0.9 threshold. The MLflow RUN ID of the promoted model is stored in S3. Model monitoring is implemented with Evidently AI. The monitoring report is stored in S3 and a selection of monitoring metrics are stored in a PostgreSQL database. Finally, Grafana ingests the monitoring metrics to visualize the monitoring dashboard of the training flow.
 
-
 ### Batch prediction flow
 ![plot](images/prediction_flow.drawio.png)
 
@@ -92,8 +37,16 @@ This section provides an overview of the batch prediction flow. The test subset 
 > [!NOTE]
 > Due to the limited number of data records available (approx. 2000), the test set is preserved to simulate hourly batch predictions.
 
+## Pre-requisites
+
+Before you build the project to start up the services required to execute the flows, there are some necessary steps that you need to perform. These pre-requisites are described in detail in the [PRE-REQUISITES](./PRE-REQUISITES.md) file.
+
 ## Build project
-To start upthe application stack run the following command:
+
+> [!IMPORTANT]
+> Make sure to follow the steps described in the previous section, before you execute any of the commands below
+
+To start up the application stack run the following command:
 ```
 make build
 ```
@@ -105,7 +58,7 @@ This command initiates all the necessary applications that are used in this proj
 | MLflow      | 5000  | 127.0.0.1  | http://127.0.0.1:5000  | MLflow UI               |
 | Grafana     | 3000  | 127.0.0.1  | http://127.0.0.1:3000  | Grafana UI              |
 | Adminer     | 8080  | 127.0.0.1  | http://127.0.0.1:8080  | Adminer UI              |
-<!-- | PostgreSQL  | 5432  | 127.0.0.1  | http://127.0.0.1:5432  | Postgres database       | -->
+| PostgreSQL  | 5432  | 127.0.0.1  | http://127.0.0.1:5432  | Postgres database       |
 
 
 > [!IMPORTANT]
@@ -125,12 +78,12 @@ To run both training and prediction flows, type the following command in your CL
 ```
 make run_flows
 ```
-This make command will first execute the training flow. Once the first flows finishes successfully, it will execute the prediction flow. You can access the Prefect UI to see the execution of both flows.
+This make command will first execute the training flow and then the prediction flow. You can access the Prefect UI to see the execution of both flows.
 
 
 #### 2. Deploy the Prefect flows and manually run them from Prefect UI
 
-To deploy the Prefect workflows, run the following command:
+To deploy the Prefect flows, run the following command:
 ```
 make prefect_deploy
 ```
@@ -156,6 +109,6 @@ This project uses Ruff for both linting and formatting. Details about the config
 Pre-commit hooks are used for code linting/formatting and other checks before every commit. You can find the complete configuration in the [.pre-commit-config.yaml](.pre-commit-config.yaml) file.
 
 ## Backlog for future improvements
-1. Integration tests
-2. IaC with Terraform
+1. Add integration tests (Prefect flows).
+2. IaC with Terraform to manage the infratructure.
 3. AWS EventBridge and SQS to trigger the prediction pipeline automatically when a new test set is uploaded in S3.

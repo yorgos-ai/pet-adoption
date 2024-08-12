@@ -18,9 +18,6 @@ else
     echo "Please clone the 'pet-adoption' Git repository and run the make command from the 'pet-adoption' directory."
 fi
 
-# Update the repositories
-sudo apt update
-
 # Install AWS CLI
 echo "Installing AWS CLI..."
 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
