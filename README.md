@@ -15,9 +15,7 @@ The primary aim of this project is to develop an end-to-end machine learning sys
 
 Data source: [Predict Pet Adoption Status Dataset (Kaggle)](https://www.kaggle.com/datasets/rabieelkharoua/predict-pet-adoption-status-dataset/data)
 
-The Pet Adoption Dataset provides a comprehensive look into various factors that can influence the likelihood of a pet being adopted from a shelter. This dataset includes detailed information about pets available for adoption, covering various characteristics and attributes.
-
-The data set consists of 2008 records. The complete csv file is located under the `data` directory of the repository. Due to the limited number of data records available, the data pre-processing is adjusted to accommodate for that. During the training flow, the dataset is splitted in three separate sets (train, validation and test). All the subsets as well as the complete initial dataset are stored in S3. The training pipeline uses the train and validation sets to train a CatBoost classifier and evaluate the model performance on the validation set. The test set is used in the prediction pipeline to simulate hourly batch predictions.
+The Pet Adoption Dataset provides a comprehensive look into various factors that can influence the likelihood of a pet being adopted from a shelter. This dataset includes detailed information about pets available for adoption, covering various characteristics and attributes. The data set consists of 2008 records. The complete csv file is located under the `data` directory of the repository.
 
 ## Pre-requisites
 
@@ -76,6 +74,24 @@ aws configure --profile mlops-zoomcamp
 ### 7. Create S3 buckets
 This project uses two S3 buckets. The `pet-adoption-mlops` is a general purpose S3 bucket for storing artifacts and the second, `mlflow-artifacts-pet-adoption` is the artifact folder for the MLflow tracking server.
 
+## Project solution architecture
+
+There are two main flows in this project. The training flow uses the training and validation data to train a CatBoost classifier that learns to predict the probability of a pet being adopted. The batch prediction flow retrieves the test data and uses the trained model to provide predictions.
+
+### Training flow
+![plot](images/training_flow.drawio.png)
+
+This section provides an overview of the training flow. First, it reads the csv file from the [data](data) directory of the repository. The preprocessing step casts all numerical columns as float type. Afterwards, the data is split in three subsets (train, validation and test) using statified splitting, to ensure that relative class frequencies is approximately preserved in each subset. All three subsets are stored in S3. A CatBoost classifier with default hyperparameters is trained on the training set. The validation set is used to evaluate the performance of the model and select the optimal number of trees. Experiment tracking is implemented using MLflow with a SQLite database as the backend. All model hyperparameters along with training and validation performance metrics are logged in Mlflow. Furthermore, the classification report and confusion matrix images from the validation set are tracked by MLflow. The MLflow Model Registry is used to promote the model to production stage if the recall metric on validation set exceeds the 0.9 threshold. The MLflow RUN ID of the promoted model is stored in S3. Model monitoring is implemented with Evidently AI. The monitoring report is stored in S3 and a selection of monitoring metrics are stored in a PostgreSQL database. Finally, Grafana ingests the monitoring metrics to visualize the monitoring dashboard of the training flow.
+
+
+### Batch prediction flow
+![plot](images/prediction_flow.drawio.png)
+
+This section provides an overview of the batch prediction flow. The test subset is retrieved from S3 and the data get preprocessed. The MLflow RUN ID of the production model is retrieved from S3, which is used to load the trained model from MLflow. The test subset is split in 12 chunks and a timestamp incremented by 1 hour is appended to each chuck in order to simulate a batch prediction scenario. The model is applied to each chunk to predict the adoption probability. Evidently calculates a monitoring report for each chunk which is stored in S3. A selection of monitoring metrics is stored in the PostgreSQL database. Finally, Grafana loads the batch prediction metrics from the Postgres database to populate the batch prediction monitoring plots.
+
+> [!NOTE]
+> Due to the limited number of data records available (approx. 2000), the test set is preserved to simulate hourly batch predictions.
+
 ## Build project
 To start upthe application stack run the following command:
 ```
@@ -93,7 +109,7 @@ This command initiates all the necessary applications that are used in this proj
 
 
 > [!IMPORTANT]
-> You might have to manually set the port-forwarding from your machine in order to be able to access the URL links above.
+> You might have to manually configure the port-forwarding from VScode in your machine in order to be able to access the URL links above.
 
 
 ## Workflow orchestration with Prefect
