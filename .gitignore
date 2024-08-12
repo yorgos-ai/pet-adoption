@@ -166,5 +166,8 @@ reports/
 catboost_info/
 mlruns/
 
+# Hydra
+outputs/
+
 # Docker volume
 postgres/
