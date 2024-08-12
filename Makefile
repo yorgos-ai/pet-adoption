@@ -13,7 +13,6 @@ pyenv:
 
 poetry:
 	poetry env use 3.10.12
-	poetry shell
 	poetry install
 	pre-commit install
 
@@ -22,12 +21,10 @@ env_setup: pyenv poetry
 # Applications
 
 mlflow:
-	poetry shell
-	mlflow server --backend-store-uri '${MLFLOW_TRACKING_URI}' --default-artifact-root 's3://${S3_BUCKET_MLFLOW}'
+	poetry run mlflow server --backend-store-uri '${MLFLOW_TRACKING_URI}' --default-artifact-root 's3://${S3_BUCKET_MLFLOW}'
 
 start_services:
-	poetry shell
-	dotenv
+	poetry run dotenv
 	docker-compose up --build -d
 
 build: start_services mlflow
@@ -38,9 +35,8 @@ kill_services:
 # Workflows orchestration
 
 run_flows:
-	poetry shell
-	python pet_adoption/flows/model_training.py
-	python pet_adoption/flows/batch_prediction.py
+	poetry run python pet_adoption/flows/model_training.py
+	poetry run python pet_adoption/flows/batch_prediction.py
 
 prefect_deploy:
 	poetry shell
@@ -53,5 +49,4 @@ e2e_flow: build run_flows
 # Tests
 
 tests:
-	poetry shell
-	pytest -v --cov-report term --cov=pet_adoption tests/
+	poetry run pytest -v --cov-report term --cov=pet_adoption tests/

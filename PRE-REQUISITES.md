@@ -61,36 +61,40 @@ $ code .
 ```
 A new VS code window will pop up and the repository files and folders should be visible in the left panel.
 
-### 6. Install `make` on the EC2 instance
+### 6. Create a `.env` file
+This project uses a .env file to store credentials and other environment variables. These environment variables are loaded at run time using the `dotenv` Python package.
+
+Rename the `.env.example` file to `.env` and change the name of the S3 buckets to the names you used in step 4.
+
+### 7. Run the initial setup script.
 Install `make` in your EC2 instance to be able to execute make commands.
 ```
 $ sudo apt update
 $ sudo apt install make
-$ make init_setup
 ```
 
-The `make init_setup` CLI command executes the [set_up.sh](pet_adoption/scripts/set_up.sh) script which does the following things:
+Once the installation is finished, run the set up script.
+```
+make init_setup
+```
+This make command executes the [set_up.sh](pet_adoption/scripts/set_up.sh) script which does the following things:
 - Installs the AWS CLI
 - Installs Docker
 - Installs Docker Compose
 - Installs and configures Pyenv
 - Installs and configures Poetry
 
-### 7. Create a Poetry environemnt and install Python dependencies
+### 8. Install Python dependencies
 Open a new terminal and execute the following command:
 ```
 make env_setup
 ```
 This make command installs Python 3.0.12 using Pyenv, creates a Poetry environment and installs all necessary Python packages that are used in this project.
 
-### 8. Configure AWS credentials
+### 9. Configure AWS credentials
 Set up your AWS profile by adding your `AWS_SECRET_ACCESS_KEY` and `AWS_ACCESS_KEY_ID` form step 1 to your AWS profile. These credentials will be automatically used to authenticate your IAM role and be able access AWS services from your EC2 instance.
 
 ```
 aws configure --profile mlops-zoomcamp
 ```
-
-### 8. Create a `.env` file
-This project uses a .env file to store credentials and other environment variables. These environment variables are loaded at run time using the `dotenv` Python package.
-
-Rename the `.env.example` file to `.env` and change the name of the S3 buckets to the names you used in step 4.
+Copy-paste the secret access key and the access key id to the terminal. Also, add your AWS region as the default region in your AWS profile.
