@@ -24,10 +24,12 @@ env_setup: pyenv poetry pre-commit
 # Applications
 
 mlflow:
-	poetry run mlflow server --backend-store-uri '${MLFLOW_TRACKING_URI}' --default-artifact-root 's3://${S3_BUCKET_MLFLOW}'
+	poetry shell
+	mlflow server --backend-store-uri '${MLFLOW_TRACKING_URI}' --default-artifact-root 's3://${S3_BUCKET_MLFLOW}'
 
 start_services:
-	poetry run dotenv
+	poetry shell
+	dotenv
 	docker-compose up --build -d
 
 build: start_services mlflow
