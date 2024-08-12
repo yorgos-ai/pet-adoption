@@ -27,7 +27,7 @@ set_up: init_setup pyenv_setup poetry_setup env_setup
 
 mlflow:
 	poetry shell
-	mlflow server --backend-store-uri 'sqlite:///mlflow.db' --default-artifact-root 's3://${S3_BUCKET_MLFLOW}'
+	mlflow server --backend-store-uri '${MLFLOW_TRACKING_URI}' --default-artifact-root 's3://${S3_BUCKET_MLFLOW}'
 
 start_services:
 	poetry shell
