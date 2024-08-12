@@ -64,22 +64,26 @@ A new VS code window will pop up and the repository files and folders should be 
 ### 6. Install `make` on the EC2 instance
 Install `make` in your EC2 instance to be able to execute make commands.
 ```
-$ sudo apt update && sudo apt upgrade -y
+$ sudo apt update
 $ sudo apt install make
-$ make set_up
+$ make init_setup
 ```
 
-The `make set_up` CLI command executes the [set_up.sh](pet_adoption/scripts/set_up.sh) script which does the following things:
+The `make init_setup` CLI command executes the [set_up.sh](pet_adoption/scripts/set_up.sh) script which does the following things:
 - Installs the AWS CLI
 - Installs Docker
 - Installs Docker Compose
 - Installs and configures Pyenv
 - Installs and configures Poetry
 
-Finally, the make command installs Python 3.0.12 using Pyenv, creates a Poetry environment and installs all necessary Python packages that are used in this project.
+### 7. Create a Poetry environemnt and install Python dependencies
+Open a new terminal and execute the following command:
+```
+make env_setup
+```
+This make command installs Python 3.0.12 using Pyenv, creates a Poetry environment and installs all necessary Python packages that are used in this project.
 
-
-### 7. Configure AWS credentials
+### 8. Configure AWS credentials
 Set up your AWS profile by adding your `AWS_SECRET_ACCESS_KEY` and `AWS_ACCESS_KEY_ID` form step 1 to your AWS profile. These credentials will be automatically used to authenticate your IAM role and be able access AWS services from your EC2 instance.
 
 ```

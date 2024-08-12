@@ -7,21 +7,17 @@ init_setup:
 	chmod +x pet_adoption/scripts/set_up.sh
 	bash pet_adoption/scripts/set_up.sh
 
-pyenv_setup:
-	cd pet-adoption
+pyenv:
 	pyenv install 3.10.12
 	pyenv local 3.10.12
 
-poetry_setup:
-	pyenv shell 3.10.12
+poetry:
 	poetry env use 3.10.12
-
-env_setup:
 	poetry shell
 	poetry install
 	pre-commit install
 
-set_up: init_setup pyenv_setup poetry_setup env_setup
+env_setup: pyenv poetry
 
 # Applications
 

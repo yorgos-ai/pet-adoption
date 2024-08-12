@@ -58,7 +58,6 @@ This command initiates all the necessary applications that are used in this proj
 | MLflow      | 5000  | 127.0.0.1  | http://127.0.0.1:5000  | MLflow UI               |
 | Grafana     | 3000  | 127.0.0.1  | http://127.0.0.1:3000  | Grafana UI              |
 | Adminer     | 8080  | 127.0.0.1  | http://127.0.0.1:8080  | Adminer UI              |
-| PostgreSQL  | 5432  | 127.0.0.1  | http://127.0.0.1:5432  | Postgres database       |
 
 
 > [!IMPORTANT]
