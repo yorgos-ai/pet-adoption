@@ -30,12 +30,12 @@ mlflow:
 start_services:
 	poetry shell
 	dotenv
-	docker-compose up --build -d
+	sudo docker-compose up --build -d
 
 build: start_services mlflow
 
 kill_services:
-	docker-compose down --remove-orphans --volumes
+	sudo docker-compose down --remove-orphans --volumes
 
 # Workflows orchestration
 
