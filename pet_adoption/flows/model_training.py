@@ -1,8 +1,6 @@
 import os
 
-import hydra
 from dotenv import load_dotenv
-from omegaconf import DictConfig
 from prefect import flow
 
 from pet_adoption.flows.tasks import (
@@ -22,9 +20,8 @@ from pet_adoption.utils import date_today_str
 load_dotenv()
 
 
-@hydra.main(config_path="../../config", config_name="config", version_base=None)
 @flow
-def training_flow(cfg: DictConfig) -> None:
+def training_flow() -> None:
     """
     The main training flow orchestrated with Prefect.
 
@@ -36,15 +33,13 @@ def training_flow(cfg: DictConfig) -> None:
     -  Stores the training, validation, and test sets in S3.
     -  Trains a CatBoost classifier on the training data and evaluates the model performance on the validation set.\
         It also logs the model and evaluation metrics to MLflow.
-
-    :param cfg: the configuration yaml file
     """
     batch_date = date_today_str()
     setup_mlflow()
 
     df = read_data()
     df = preprocess_data(df=df)
-    df_train, df_val, df_test = stratified_split(df=df, cfg=cfg)
+    df_train, df_val, df_test = stratified_split(df=df)
 
     # store the data in S3
     store_data_in_s3(df_train, os.getenv("S3_BUCKET"), "data/df_train.csv")
@@ -52,14 +47,14 @@ def training_flow(cfg: DictConfig) -> None:
     store_data_in_s3(df_test, os.getenv("S3_BUCKET"), "data/df_test.csv")
 
     # train the model
-    _, train_df, val_df, run_id = train_model(df_train=df_train, df_val=df_val, cfg=cfg)
+    _, train_df, val_df, run_id = train_model(df_train=df_train, df_val=df_val)
 
     # save the MLflow run ID of the production model in S3
     run_id_dict = {"run_id": run_id}
     store_json_in_s3(dict_obj=run_id_dict, bucket_name=os.getenv("S3_BUCKET_MLFLOW"), file_key="production_model.json")
 
     # monitoring metrics
-    metrics_dict = monitor_model_performance(reference_data=train_df, current_data=val_df, cfg=cfg)
+    metrics_dict = monitor_model_performance(reference_data=train_df, current_data=val_df)
     save_monitoring_metrics_in_s3(
         metrics_dict=metrics_dict, bucket_name=os.getenv("S3_BUCKET"), file_key="data/monitoring_metrics_training.json"
     )

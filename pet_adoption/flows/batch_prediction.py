@@ -1,9 +1,7 @@
 import os
 from datetime import datetime
 
-import hydra
 from dotenv import load_dotenv
-from omegaconf import DictConfig
 from prefect import flow
 
 from pet_adoption.flows.tasks import (
@@ -18,9 +16,8 @@ from pet_adoption.flows.tasks import (
 load_dotenv()
 
 
-@hydra.main(config_path="../../config", config_name="config", version_base=None)
 @flow
-def batch_prediction_flow(cfg: DictConfig) -> None:
+def batch_prediction_flow() -> None:
     """
     The batch prediction flow orchestrated with Prefect.
 
@@ -31,8 +28,6 @@ def batch_prediction_flow(cfg: DictConfig) -> None:
     - Make predictions using the loaded model.
     - Read the training data from S3 and apply the loaded models to get predictions.
     - Create monitoring metrics for the test set based on the train set.
-
-    :param cfg: the configuration yaml file
     """
     datetime_now = datetime.now()
 
@@ -51,9 +46,9 @@ def batch_prediction_flow(cfg: DictConfig) -> None:
 
     # read the training data from S3 and apply the model to get predictions for monitoring
     df_train = read_data_from_s3(bucket_name=os.getenv("S3_BUCKET"), file_key="data/df_train.csv")
-    df_train = apply_model(df=df_train, model=model, cfg=cfg)
+    df_train = apply_model(df=df_train, model=model)
 
-    simulate_batch_predictions(df_train=df_train, df_test=df_test, date_time=datetime_now, model=model, cfg=cfg)
+    simulate_batch_predictions(df_train=df_train, df_test=df_test, date_time=datetime_now, model=model)
     return None
 
 
