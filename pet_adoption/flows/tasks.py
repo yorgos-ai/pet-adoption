@@ -2,7 +2,7 @@ import json
 import os
 from datetime import datetime, timedelta
 from io import StringIO
-from typing import Dict, List, Tuple
+from typing import Dict, Tuple
 
 import boto3
 import mlflow
@@ -15,6 +15,7 @@ from evidently.metrics import ColumnDriftMetric, DatasetDriftMetric, DatasetMiss
 from evidently.report import Report
 from mlflow.pyfunc import PyFuncModel
 from mlflow.tracking import MlflowClient
+from omegaconf import DictConfig
 from prefect import task
 from sklearn.model_selection import train_test_split
 from sqlalchemy import create_engine
@@ -28,26 +29,12 @@ from pet_adoption.utils import (
     save_dict_in_s3,
 )
 
-TARGET = "AdoptionLikelihood"
-NUM_FEATURES = [
-    "AgeMonths",
-    "WeightKg",
-    "Vaccinated",
-    "HealthCondition",
-    "TimeInShelterDays",
-    "AdoptionFee",
-    "PreviousOwner",
-]
-CAT_FEATURES = ["PetType", "Breed", "Color", "Size"]
-RANDOM_STATE = 42
-
 
 @task(name="MLflow Setup")
 def setup_mlflow() -> None:
     """
     Set up the MLflow tracking server and create an experiment.
     """
-    # mlflow.set_tracking_uri(f"http://{TRACKING_SERVER_HOST}:5000")
     mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
 
     # Check if the experiment exists
@@ -109,8 +96,7 @@ def preprocess_data(df: pd.DataFrame) -> pd.DataFrame:
 @task(name="Data Splitting")
 def stratified_split(
     df: pd.DataFrame,
-    target_col: str = TARGET,
-    random_state: int = RANDOM_STATE,
+    cfg: DictConfig,
     frac_train: float = 0.6,
     frac_val: float = 0.2,
     frac_test: float = 0.2,
@@ -119,11 +105,10 @@ def stratified_split(
     Splits a DataFrame into train, validation, and test sets, stratified on the target column.
 
     :param df: initial dataframe
-    :param target_col: the name fo the target column, defaults to TARGET
+    :param cfg: the configuration yaml file
     :param frac_train: the fraction of data in the train set, defaults to 0.6
     :param frac_val: the fraction of data in the validation set, defaults to 0.2
     :param frac_test: the fraction of data in the test set, defaults to 0.2
-    :param random_state: the random seed, defaults to RANDOM_STATE
     :return: a tuple of DataFrames (train, validation, test)
     """
     if frac_train + frac_val + frac_test != 1.0:
@@ -131,13 +116,13 @@ def stratified_split(
 
     # Perform initial split into train/temp and validate/test
     df_train, df_temp = train_test_split(
-        df, stratify=df[target_col], test_size=(1.0 - frac_train), random_state=random_state
+        df, stratify=df[cfg.target], test_size=(1.0 - frac_train), random_state=cfg.random_state
     )
 
     # Further split temp into val/test
     relative_frac_test = frac_test / (frac_val + frac_test)
     df_val, df_test = train_test_split(
-        df_temp, stratify=df_temp[target_col], test_size=relative_frac_test, random_state=random_state
+        df_temp, stratify=df_temp[cfg.target], test_size=relative_frac_test, random_state=cfg.random_state
     )
 
     return df_train, df_val, df_test
@@ -162,12 +147,7 @@ def store_data_in_s3(df: pd.DataFrame, bucket_name: str, file_key: str) -> None:
 
 @task(name="Model Training", log_prints=True)
 def train_model(
-    df_train: pd.DataFrame,
-    df_val: pd.DataFrame,
-    target: str = TARGET,
-    num_features: List[str] = NUM_FEATURES,
-    cat_features: List[str] = CAT_FEATURES,
-    random_state: int = RANDOM_STATE,
+    df_train: pd.DataFrame, df_val: pd.DataFrame, cfg: DictConfig
 ) -> Tuple[CatBoostClassifier, pd.DataFrame, pd.DataFrame, str]:
     """
     Train a CatBoost classifier on the training data and evaluate the model
@@ -175,33 +155,30 @@ def train_model(
 
     :param df_train: the training dataset
     :param df_val: the validation dataset
-    :param target: the name of the target column, defaults to TARGET
-    :param num_features: the list of numerical features, defaults to NUM_FEATUERS
-    :param cat_features: the list of categorical features, defaults to CAT_FEATURES
-    :param random_state: the random seed, defaults to RANDOM_STATE
+    :param cfg: the configuration yaml file
     :return: the fitted model, the train and validation sets including the model prediction and the MLflow run ID
     """
     # training set
-    X_train = df_train[num_features + cat_features]
-    y_train = df_train[target]
+    X_train = df_train[cfg.num_features + cfg.cat_features]
+    y_train = df_train[cfg.target]
 
     # validation set
-    X_val = df_val[num_features + cat_features]
-    y_val = df_val[target]
+    X_val = df_val[cfg.num_features + cfg.cat_features]
+    y_val = df_val[cfg.target]
 
     with mlflow.start_run():
         run_id = mlflow.active_run().info.run_id
         print(f"MLflow run_id: {run_id}")
 
-        train_pool = Pool(data=X_train, label=y_train, cat_features=CAT_FEATURES)
-        val_pool = Pool(data=X_val, label=y_val, cat_features=CAT_FEATURES)
+        train_pool = Pool(data=X_train, label=y_train, cat_features=cfg.cat_features)
+        val_pool = Pool(data=X_val, label=y_val, cat_features=cfg.cat_features)
 
         model = CatBoostClassifier(
             iterations=1000,
             learning_rate=0.1,
             depth=6,
             verbose=200,
-            random_state=random_state,
+            random_state=cfg.random_state,
         )
 
         model.fit(train_pool, eval_set=val_pool, plot=True, use_best_model=True)
@@ -283,16 +260,17 @@ def store_json_in_s3(dict_obj: Dict, bucket_name: str, file_key: str) -> None:
 
 
 @task(name="Monitoring metrics")
-def monitor_model_performance(reference_data: pd.DataFrame, current_data: pd.DataFrame) -> dict:
+def monitor_model_performance(reference_data: pd.DataFrame, current_data: pd.DataFrame, cfg: DictConfig) -> dict:
     """
     Create monitoring report using Evidently.
 
     :param reference_data: the reference data
     :param val_data: the current data
+    :param cfg: the configuration yaml file
     :return: a dictionary containing the monitoring metrics
     """
     col_mapping = ColumnMapping(
-        target=None, prediction="prediction", numerical_features=NUM_FEATURES, categorical_features=CAT_FEATURES
+        target=None, prediction="prediction", numerical_features=cfg.num_features, categorical_features=cfg.cat_features
     )
 
     report = Report(
@@ -375,15 +353,16 @@ def load_model(run_id: str) -> PyFuncModel:
 
 
 @task(name="Batch Prediction")
-def apply_model(df: pd.DataFrame, model: PyFuncModel) -> pd.DataFrame:
+def apply_model(df: pd.DataFrame, model: PyFuncModel, cfg: DictConfig) -> pd.DataFrame:
     """
     Make batch predictions using the trained CatBoost model.
 
     :param df: the data on which to make predictions
     :param model: the trained CatBoost model
+    :param cfg: the configuration yaml file
     :return: a DataFrame with the predictions
     """
-    test_pool = Pool(data=df[CAT_FEATURES + NUM_FEATURES], cat_features=CAT_FEATURES)
+    test_pool = Pool(data=df[cfg.cat_features + cfg.num_features], cat_features=cfg.cat_features)
     predictions = model.predict(test_pool)
     df["prediction"] = predictions
     return df
@@ -423,7 +402,7 @@ def get_production_model_run_id(bucket_name: str, file_key: str = "production_mo
 
 @task(name="Make Batch Predictions")
 def simulate_batch_predictions(
-    df_train: pd.DataFrame, df_test: pd.DataFrame, date_time: datetime, model: PyFuncModel
+    df_train: pd.DataFrame, df_test: pd.DataFrame, date_time: datetime, model: PyFuncModel, cfg: DictConfig
 ) -> None:
     """
     Simulate hourly batch predictions by splitting the test set in 12 chunks.
@@ -432,6 +411,7 @@ def simulate_batch_predictions(
     :param df_test: the test data
     :param date_time: the date used to create batches
     :param model: the loaded model
+    :param cfg: the configuration yaml file
     """
     # simulate hourly batch predictions by splitting the test set in 12 chunks
     batch_size = 12
@@ -443,7 +423,7 @@ def simulate_batch_predictions(
         batch_df["batch_date"] = batch_date
 
         # apply the model to the batch
-        batch_df = apply_model(batch_df, model)
+        batch_df = apply_model(df=batch_df, model=model, cfg=cfg)
 
         # store the batch dataframe in S3
         store_data_in_s3(
@@ -453,7 +433,7 @@ def simulate_batch_predictions(
         )
 
         # create monitoring metrics for the batch
-        metrics_dict = monitor_model_performance(reference_data=df_train, current_data=batch_df)
+        metrics_dict = monitor_model_performance(reference_data=df_train, current_data=batch_df, cfg=cfg)
         save_dict_in_s3(
             data=metrics_dict, bucket=os.getenv("S3_BUCKET"), file_path=f"prediction_metrics/{batch_date_str}.json"
         )

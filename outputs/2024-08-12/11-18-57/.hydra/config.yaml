@@ -1,0 +1,15 @@
+target: AdoptionLikelihood
+num_features:
+- AgeMonths
+- WeightKg
+- Vaccinated
+- HealthCondition
+- TimeInShelterDays
+- AdoptionFee
+- PreviousOwner
+cat_features:
+- PetType
+- Breed
+- Color
+- Size
+random_state: 42
