@@ -43,7 +43,6 @@ jobs:
 
   code-linting:
     runs-on: ubuntu-latest
-    needs: build
 
     steps:
       - name: Checkout code
@@ -80,7 +79,6 @@ jobs:
   unit-tests:
     runs-on: ubuntu-latest
     needs:
-      - build
       - code-linting
 
     steps:
