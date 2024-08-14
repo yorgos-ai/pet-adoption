@@ -1,0 +1,30 @@
+name: CI Tests
+on:
+  push:
+    branches:
+      - development
+  pull_request:
+    branches:
+      - development
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python 3.10
+        uses: actions/setup-node@v2
+        with:
+          python-version: 3.10
+
+      - name: Install dependencies
+        run: pip install poetry && poetry install -G dev
+
+      - name: Code linting
+        run: poetry run ruff check .
+
+      - name: Run unit tests
+        run: poetry run pytest -v --cov-report term --cov=pet_adoption tests/
