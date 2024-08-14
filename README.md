@@ -25,12 +25,12 @@ The Pet Adoption Dataset provides a comprehensive look into various factors that
 There are two main flows in this project. The training flow uses the training and validation data to train a CatBoost classifier that learns to predict the probability of a pet being adopted. The batch prediction flow retrieves the test data and uses the trained model to provide predictions.
 
 ### Training flow
-![plot](images/training_flow.drawio.png)
+![plot](images/training_flow.png)
 
 This section provides an overview of the training flow. First, it reads the csv file from the [data](data) directory of the repository. The preprocessing step casts all numerical columns as float type. Afterwards, the data is split in three subsets (train, validation and test) using statified splitting, to ensure that relative class frequencies is approximately preserved in each subset. All three subsets are stored in S3. A CatBoost classifier with default hyperparameters is trained on the training set. The validation set is used to evaluate the performance of the model and select the optimal number of trees. Experiment tracking is implemented using MLflow with a SQLite database as the backend. All model hyperparameters along with training and validation performance metrics are logged in Mlflow. Furthermore, the classification report and confusion matrix images from the validation set are tracked by MLflow. The MLflow Model Registry is used to promote the model to production stage if the recall metric on validation set exceeds the 0.9 threshold. The MLflow RUN ID of the promoted model is stored in S3. Model monitoring is implemented with Evidently AI. The monitoring report is stored in S3 and a selection of monitoring metrics are stored in a PostgreSQL database. Finally, Grafana ingests the monitoring metrics to visualize the monitoring dashboard of the training flow.
 
 ### Batch prediction flow
-![plot](images/prediction_flow.drawio.png)
+![plot](images/prediction_flow.png)
 
 This section provides an overview of the batch prediction flow. The test subset is retrieved from S3 and the data get preprocessed. The MLflow RUN ID of the production model is retrieved from S3, which is used to load the trained model from MLflow. The test subset is split in 12 chunks and a timestamp incremented by 1 hour is appended to each chuck in order to simulate a batch prediction scenario. The model is applied to each chunk to predict the adoption probability. Evidently calculates a monitoring report for each chunk which is stored in S3. A selection of monitoring metrics is stored in the PostgreSQL database. Finally, Grafana loads the batch prediction metrics from the Postgres database to populate the batch prediction monitoring plots.
 
