@@ -8,23 +8,48 @@ on:
       - development
 
 jobs:
-  build:
+  code-linting:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+
+      - name: Install Poetry
+        run: pip install poetry
 
       - name: Set up Python 3.10
-        uses: actions/setup-node@v2
+        uses: actions/setup-python@v4
         with:
-          python-version: 3.10
+          python-version: '3.10'
 
       - name: Install dependencies
-        run: pip install poetry && poetry install
+        run: |
+          pip install poetry && poetry install
 
       - name: Code linting
         run: poetry run ruff check .
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    needs:
+      - code-linting
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install poetry && poetry install
 
       - name: Run unit tests
         run: poetry run pytest -v --cov-report term --cov=pet_adoption tests/
