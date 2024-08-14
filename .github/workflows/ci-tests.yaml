@@ -13,29 +13,63 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+
+      - name: Install Poetry
+        run: pip install poetry
 
       - name: Set up Python 3.10
-        uses: actions/setup-node@v2
+        uses: actions/setup-python@v5
         with:
           python-version: 3.10
+          cache: 'poetry'
 
       - name: Install dependencies
-        run: pip install poetry && poetry install
+        run: poetry install
 
   code-linting:
     runs-on: ubuntu-latest
     needs: build
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.10
+          cache: 'poetry'
+
+      - name: Install dependencies
+        run: poetry install
+
       - name: Code linting
         run: poetry run ruff check .
 
 
   unit-tests:
     runs-on: ubuntu-latest
-    needs: build
+    needs: build, code-linting
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.10
+          cache: 'poetry'
+
+      - name: Install dependencies
+        run: poetry install
+
       - name: Run unit tests
         run: poetry run pytest -v --cov-report term --cov=pet_adoption tests/
