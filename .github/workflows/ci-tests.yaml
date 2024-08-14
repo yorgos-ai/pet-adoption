@@ -23,8 +23,19 @@ jobs:
       - name: Install dependencies
         run: pip install poetry && poetry install
 
+  code-linting:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
       - name: Code linting
         run: poetry run ruff check .
 
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
       - name: Run unit tests
         run: poetry run pytest -v --cov-report term --cov=pet_adoption tests/
