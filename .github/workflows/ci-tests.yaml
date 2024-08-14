@@ -56,22 +56,10 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Setup Poetry
+      - name: Install dependencies
         run: |
           pip install poetry
-          poetry config virtualenvs.create true
-          poetry config virtualenvs.in-project true
-
-      - name: Install dependencies from cache
-        id: poetry-cache
-        uses: actions/cache@v3
-        with:
-          path: .venv
-          key: poetry-ci-dependencies-${{ hashFiles('**/poetry.lock') }}
-
-      - name: Install dependencies
-        run: poetry install --no-interaction --no-root
-        if: steps.poetry-cache.outputs.cache-hit != 'true'
+          poetry install --no-interaction --no-root
 
       - name: Code linting
         run: poetry run ruff check .
@@ -93,22 +81,10 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Setup Poetry
+      - name: Install dependencies
         run: |
           pip install poetry
-          poetry config virtualenvs.create true
-          poetry config virtualenvs.in-project true
-
-      - name: Install dependencies from cache
-        id: poetry-cache
-        uses: actions/cache@v3
-        with:
-          path: .venv
-          key: poetry-ci-dependencies-${{ hashFiles('**/poetry.lock') }}
-
-      - name: Install dependencies
-        run: poetry install --no-interaction --no-root
-        if: steps.poetry-cache.outputs.cache-hit != 'true'
+          poetry install --no-interaction --no-root
 
       - name: Run unit tests
         run: poetry run pytest -v --cov-report term --cov=pet_adoption tests/
