@@ -11,7 +11,13 @@ import pandas as pd
 from botocore.exceptions import ClientError
 from catboost import CatBoostClassifier, Pool
 from evidently import ColumnMapping
-from evidently.metrics import ColumnDriftMetric, DatasetDriftMetric, DatasetMissingValuesMetric
+from evidently.metrics import (
+    ClassificationQualityByClass,
+    ClassificationQualityMetric,
+    ColumnDriftMetric,
+    DatasetDriftMetric,
+    DatasetMissingValuesMetric,
+)
 from evidently.report import Report
 from mlflow.pyfunc import PyFuncModel
 from mlflow.tracking import MlflowClient
@@ -268,7 +274,7 @@ def store_json_in_s3(dict_obj: Dict, bucket_name: str, file_key: str) -> None:
     s3.Object(bucket_name, file_key).put(Body=json_string)
 
 
-@task(name="Monitoring metrics")
+@task(name="Training monitoring metrics")
 def training_monitoring(reference_data: pd.DataFrame, current_data: pd.DataFrame) -> dict:
     """
     Create the training flow monitoring report using Evidently.
@@ -287,6 +293,8 @@ def training_monitoring(reference_data: pd.DataFrame, current_data: pd.DataFrame
             DatasetDriftMetric(),
             DatasetMissingValuesMetric(),
             ColumnDriftMetric(column_name=TARGET),
+            ClassificationQualityMetric(),
+            ClassificationQualityByClass(),
         ]
     )
 
@@ -367,6 +375,18 @@ def extract_training_report_data(batch_date, metrics_dict: dict, db_name: str) -
         "dataset_drift": metrics_dict[1]["result"]["dataset_drift"],
     }
 
+    classification_metrics = {
+        "batch_date": batch_date,
+        "train_accuracy": metrics_dict[4]["result"]["current"]["accuracy"],
+        "train_precision": metrics_dict[4]["result"]["current"]["precision"],
+        "train_recall": metrics_dict[4]["result"]["current"]["recall"],
+        "train_f1": metrics_dict[4]["result"]["current"]["f1"],
+        "val_accuracy": metrics_dict[4]["result"]["reference"]["accuracy"],
+        "val_precision": metrics_dict[4]["result"]["reference"]["precision"],
+        "val_recall": metrics_dict[4]["result"]["reference"]["recall"],
+        "val_f1": metrics_dict[4]["result"]["reference"]["f1"],
+    }
+
     params = {
         "user": os.getenv("POSTGRES_USER"),
         "pass": os.getenv("POSTGRES_PASSWORD"),
@@ -380,6 +400,9 @@ def extract_training_report_data(batch_date, metrics_dict: dict, db_name: str) -
     pd.DataFrame(drift_target, index=[0]).to_sql("drift_target", engine, if_exists="append", index=False)
     pd.DataFrame(drift_prediction, index=[0]).to_sql("drift_prediction", engine, if_exists="append", index=False)
     pd.DataFrame(drift_dataset, index=[0]).to_sql("drift_dataset", engine, if_exists="append", index=False)
+    pd.DataFrame(classification_metrics, index=[0]).to_sql(
+        "classification_metrics", engine, if_exists="append", index=False
+    )
 
 
 @task(name="extract_batch_report_data")

@@ -28,6 +28,18 @@ CREATE TABLE IF NOT EXISTS drift_dataset (
     dataset_drift boolean
 );
 
+CREATE TABLE IF NOT EXISTS classification_metrics (
+    batch_date timestamp NOT NULL,
+    train_accuracy decimal,
+    train_precision decimal,
+    train_recall decimal,
+    train_f1 decimal,
+    val_accuracy decimal,
+    val_precision decimal,
+    val_recall decimal,
+    val_f1 decimal
+);
+
 
 CREATE DATABASE predict_monitoring;
 GRANT ALL PRIVILEGES ON DATABASE predict_monitoring TO admin;
