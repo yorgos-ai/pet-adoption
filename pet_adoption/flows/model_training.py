@@ -4,8 +4,6 @@ from dotenv import load_dotenv
 from prefect import flow
 
 from pet_adoption.flows.tasks import (
-    extract_report_data,
-    monitor_model_performance,
     preprocess_data,
     read_data,
     save_monitoring_metrics_in_s3,
@@ -13,7 +11,9 @@ from pet_adoption.flows.tasks import (
     store_data_in_s3,
     store_json_in_s3,
     stratified_split,
+    train_metrics_to_db,
     train_model,
+    training_monitoring,
 )
 from pet_adoption.utils import date_today_str
 
@@ -54,11 +54,11 @@ def training_flow() -> None:
     store_json_in_s3(dict_obj=run_id_dict, bucket_name=os.getenv("S3_BUCKET_MLFLOW"), file_key="production_model.json")
 
     # monitoring metrics
-    metrics_dict = monitor_model_performance(reference_data=train_df, current_data=val_df)
+    metrics_dict = training_monitoring(reference_data=train_df, current_data=val_df)
     save_monitoring_metrics_in_s3(
         metrics_dict=metrics_dict, bucket_name=os.getenv("S3_BUCKET"), file_key="data/monitoring_metrics_training.json"
     )
-    extract_report_data(batch_date=batch_date, metrics_dict=metrics_dict, db_name="training_monitoring")
+    train_metrics_to_db(batch_date=batch_date, metrics_dict=metrics_dict, db_name="training_monitoring")
 
 
 if __name__ == "__main__":

@@ -11,7 +11,12 @@ import pandas as pd
 from botocore.exceptions import ClientError
 from catboost import CatBoostClassifier, Pool
 from evidently import ColumnMapping
-from evidently.metrics import ColumnDriftMetric, DatasetDriftMetric, DatasetMissingValuesMetric
+from evidently.metrics import (
+    ClassificationQualityMetric,
+    ColumnDriftMetric,
+    DatasetDriftMetric,
+    DatasetMissingValuesMetric,
+)
 from evidently.report import Report
 from mlflow.pyfunc import PyFuncModel
 from mlflow.tracking import MlflowClient
@@ -138,7 +143,7 @@ def stratified_split(
     return df_train, df_val, df_test
 
 
-@task(name="Store data in S3")
+@task(name="Store Data in S3")
 def store_data_in_s3(df: pd.DataFrame, bucket_name: str, file_key: str) -> None:
     """
     Write a Pandas DataFrame to an S3 bucket as a CSV file.
@@ -268,8 +273,36 @@ def store_json_in_s3(dict_obj: Dict, bucket_name: str, file_key: str) -> None:
     s3.Object(bucket_name, file_key).put(Body=json_string)
 
 
-@task(name="Monitoring metrics")
-def monitor_model_performance(reference_data: pd.DataFrame, current_data: pd.DataFrame) -> dict:
+@task(name="Training Monitoring Metrics")
+def training_monitoring(reference_data: pd.DataFrame, current_data: pd.DataFrame) -> dict:
+    """
+    Create the training flow monitoring report using Evidently.
+
+    :param reference_data: the reference data
+    :param val_data: the current data
+    :return: a dictionary containing the monitoring metrics
+    """
+    col_mapping = ColumnMapping(
+        target=TARGET, prediction="prediction", numerical_features=NUM_FEATURES, categorical_features=CAT_FEATURES
+    )
+
+    report = Report(
+        metrics=[
+            ColumnDriftMetric(column_name="prediction"),
+            DatasetDriftMetric(),
+            DatasetMissingValuesMetric(),
+            ColumnDriftMetric(column_name=TARGET),
+            ClassificationQualityMetric(),
+        ]
+    )
+
+    report.run(reference_data=reference_data, current_data=current_data, column_mapping=col_mapping)
+    metrics_dict = report.as_dict()["metrics"]
+    return metrics_dict
+
+
+@task(name="Prediction Monitoring Metrics")
+def prediction_monitoring(reference_data: pd.DataFrame, current_data: pd.DataFrame) -> dict:
     """
     Create monitoring report using Evidently.
 
@@ -306,10 +339,74 @@ def save_monitoring_metrics_in_s3(metrics_dict: dict, bucket_name: str, file_key
     save_dict_in_s3(data=metrics_dict, bucket=bucket_name, file_path=file_key)
 
 
-@task(name="extract_batch_report_data")
-def extract_report_data(batch_date, metrics_dict: dict, db_name: str) -> None:
+@task(name="Send Training Metrics to Postgres")
+def train_metrics_to_db(batch_date, metrics_dict: dict, db_name: str) -> None:
     """
-    Extract the monitoring metrics and store them in a PostgreSQL database.
+    Extract the training monitoring metrics and store them in a PostgreSQL database.
+
+    :param batch_date: the date of the batch
+    :param metrics_dict: the dictionary containing the monitoring metrics
+    :param db_name: the name of the Postgres db
+    """
+    drift_target = {
+        "batch_date": batch_date,
+        "drift_stat_test": metrics_dict[3]["result"]["stattest_name"],
+        "drift_stat_threshold": metrics_dict[3]["result"]["stattest_threshold"],
+        "drift_score": metrics_dict[3]["result"]["drift_score"],
+        "drift_detected": metrics_dict[3]["result"]["drift_detected"],
+    }
+
+    drift_prediction = {
+        "batch_date": batch_date,
+        "drift_stat_test": metrics_dict[0]["result"]["stattest_name"],
+        "drift_stat_threshold": metrics_dict[0]["result"]["stattest_threshold"],
+        "drift_score": metrics_dict[0]["result"]["drift_score"],
+        "drift_detected": metrics_dict[0]["result"]["drift_detected"],
+    }
+
+    drift_dataset = {
+        "batch_date": batch_date,
+        "drift_share": metrics_dict[1]["result"]["drift_share"],
+        "number_of_columns": metrics_dict[1]["result"]["number_of_columns"],
+        "number_of_drifted_columns": metrics_dict[1]["result"]["number_of_drifted_columns"],
+        "share_of_drifted_columns": metrics_dict[1]["result"]["share_of_drifted_columns"],
+        "dataset_drift": metrics_dict[1]["result"]["dataset_drift"],
+    }
+
+    classification_metrics = {
+        "batch_date": batch_date,
+        "train_accuracy": metrics_dict[4]["result"]["current"]["accuracy"],
+        "train_precision": metrics_dict[4]["result"]["current"]["precision"],
+        "train_recall": metrics_dict[4]["result"]["current"]["recall"],
+        "train_f1": metrics_dict[4]["result"]["current"]["f1"],
+        "val_accuracy": metrics_dict[4]["result"]["reference"]["accuracy"],
+        "val_precision": metrics_dict[4]["result"]["reference"]["precision"],
+        "val_recall": metrics_dict[4]["result"]["reference"]["recall"],
+        "val_f1": metrics_dict[4]["result"]["reference"]["f1"],
+    }
+
+    params = {
+        "user": os.getenv("POSTGRES_USER"),
+        "pass": os.getenv("POSTGRES_PASSWORD"),
+        "host": os.getenv("POSTGRES_HOST"),
+        "port": os.getenv("POSTGRES_PORT"),
+        "database": db_name,
+    }
+    engine = create_engine("postgresql://%(user)s:%(pass)s@%(host)s:%(port)s/%(database)s" % params)
+
+    # insert metrics
+    pd.DataFrame(drift_target, index=[0]).to_sql("drift_target", engine, if_exists="append", index=False)
+    pd.DataFrame(drift_prediction, index=[0]).to_sql("drift_prediction", engine, if_exists="append", index=False)
+    pd.DataFrame(drift_dataset, index=[0]).to_sql("drift_dataset", engine, if_exists="append", index=False)
+    pd.DataFrame(classification_metrics, index=[0]).to_sql(
+        "classification_metrics", engine, if_exists="append", index=False
+    )
+
+
+@task(name="Send Prediciton Metrics to Postgres")
+def prediction_metrics_to_db(batch_date, metrics_dict: dict, db_name: str) -> None:
+    """
+    Extract the batch prediction monitoring metrics and store them in a PostgreSQL database.
 
     :param batch_date: the date of the batch
     :param metrics_dict: the dictionary containing the monitoring metrics
@@ -360,7 +457,7 @@ def load_model(run_id: str) -> PyFuncModel:
     return loaded_model
 
 
-@task(name="Batch Prediction")
+@task(name="Apply Model")
 def apply_model(df: pd.DataFrame, model: PyFuncModel) -> pd.DataFrame:
     """
     Make batch predictions using the trained CatBoost model.
@@ -375,7 +472,7 @@ def apply_model(df: pd.DataFrame, model: PyFuncModel) -> pd.DataFrame:
     return df
 
 
-@task(name="Read Latest Production Model Run ID")
+@task(name="Get Production Model Run ID from S3")
 def get_production_model_run_id(bucket_name: str, file_key: str = "production_model.json") -> str:
     """
     Read the latest production model run ID from the JSON file in S3.
@@ -439,10 +536,10 @@ def simulate_batch_predictions(
         )
 
         # create monitoring metrics for the batch
-        metrics_dict = monitor_model_performance(reference_data=df_train, current_data=batch_df)
+        metrics_dict = prediction_monitoring(reference_data=df_train, current_data=batch_df)
         save_dict_in_s3(
             data=metrics_dict, bucket=os.getenv("S3_BUCKET"), file_path=f"prediction_metrics/{batch_date_str}.json"
         )
 
         # extract the monitoring metrics and store them in a PostgreSQL database
-        extract_report_data(batch_date=batch_date_str, metrics_dict=metrics_dict, db_name="predict_monitoring")
+        prediction_metrics_to_db(batch_date=batch_date_str, metrics_dict=metrics_dict, db_name="predict_monitoring")

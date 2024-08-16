@@ -63,6 +63,11 @@ This command initiates all the necessary applications that are used in this proj
 > [!IMPORTANT]
 > You might have to manually configure the port-forwarding from VScode in your machine in order to be able to access the URL links above.
 
+To kill all services, press Ctrl+C and then type
+```
+make kill_services
+```
+This command will stop all services and delete all Docker volumes.
 
 ## Workflow orchestration with Prefect
 This project uses Prefect to orchestration and deploy the workflows.
@@ -73,7 +78,7 @@ Once you have build the project services you can run the training and prediction
 
 #### 1. Execute the flows from CLI
 
-To run both training and prediction flows, type the following command in your CLI:
+To run both training and prediction flows, open a new terminal and run:
 ```
 make run_flows
 ```
@@ -101,7 +106,11 @@ MLflow Tracking Server is used to track the experiments and log training artifac
 
 ## Monitoring with Evidently
 
-Both flows are monitored using Evidently. The metrics are collected during the flow runs and are stored in a Postgres DB. Grafana connects to tehe Postgres DB to get the metrics and build monirting dashboards. To view the dashboard, go to http://127.0.0.1:3000 and navigate to the `Dahsboards` section on the left panel.
+Both flows are monitored using Evidently. The metrics are collected during the flow runs and are stored in a Postgres DB. Grafana connects to the Postgres DB to get the metrics and build the monitoring dashboards. Access the [Evidently UI](http://127.0.0.1:3000) to view the dashboards. The user name and password are both 'admin'.
+
+![plot](images/train-dashboard.png)
+
+![plot](images/prediction-dashboard.png)
 
 ## Unit tests
 Run the unit tests and generate the coverage report:
@@ -116,6 +125,6 @@ This project uses Ruff for both linting and formatting. Details about the config
 Pre-commit hooks are used for code linting/formatting and other checks before every commit. You can find the complete configuration in the [.pre-commit-config.yaml](.pre-commit-config.yaml) file.
 
 ## Backlog for future improvements
-1. Add integration tests (Prefect flows).
+1. Add integration tests by testing complete Prefect flows.
 2. IaC with Terraform to manage the infratructure.
-3. AWS EventBridge and SQS to trigger the prediction pipeline automatically when a new test set is uploaded in S3.
+3. Use AWS EventBridge to trigger the prediction pipeline automatically when a new test set is uploaded in S3.
