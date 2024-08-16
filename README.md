@@ -77,7 +77,11 @@ To run both training and prediction flows, type the following command in your CL
 ```
 make run_flows
 ```
-This make command will first execute the training flow and then the prediction flow. You can access the Prefect UI to see the execution of both flows.
+This make command will first execute the training flow and then the prediction flow. You can access the [Prefect UI](http://127.0.0.1:4200) to see the execution of both flows.
+
+![plot](images/prefect-ui-dashboard.png)
+
+![plot](images/prefect-ui-flows.png)
 
 
 #### 2. Deploy the Prefect flows and manually run them from Prefect UI
@@ -86,10 +90,14 @@ To deploy the Prefect flows, run the following command:
 ```
 make prefect_deploy
 ```
-This command will deploy the workflows, create a Prefect worker and finally start the worker. Once this step finishes, you can access Prefect UI and run the flows manually.
+This command will deploy the workflows, create a Prefect worker and finally start the worker. Once this step finishes, you can access [Prefect UI](http://127.0.0.1:4200) and see the scheduled deployed flows.
+
+![plot](images/prefect-deployment.png)
 
 ## Experiment tracking with MLflow
-MLflow Tracking Server is used to track the experiments and log training artifacts and metrics. Once the training pipeline executes, you can access MLflow UI to view the experiment run and all the relevant metrics and artifacts.
+MLflow Tracking Server is used to track the experiments and log training artifacts and metrics. Furthermore, the trained model is rgistered in the Mlflow Model Registry and is promoted to production stage, if the Recall on the validation set exceeds acertain threshold. Once the training pipeline executes, you can access the [MLflow UI](http://127.0.0.1:5000) to view the experiment run and all the relevant metrics and artifacts.
+
+![plot](images/mlflow-ui.png)
 
 ## Monitoring with Evidently
 
