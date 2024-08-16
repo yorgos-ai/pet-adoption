@@ -3,6 +3,14 @@ GRANT ALL PRIVILEGES ON DATABASE training_monitoring TO admin;
 
 \c training_monitoring admin
 
+CREATE TABLE IF NOT EXISTS drift_target (
+    batch_date timestamp NOT NULL,
+    drift_stat_test character varying(255),
+    drift_stat_threshold decimal,
+    drift_score decimal,
+    drift_detected boolean
+);
+
 CREATE TABLE IF NOT EXISTS drift_prediction (
     batch_date timestamp NOT NULL,
     drift_stat_test character varying(255),

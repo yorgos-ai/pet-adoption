@@ -269,6 +269,33 @@ def store_json_in_s3(dict_obj: Dict, bucket_name: str, file_key: str) -> None:
 
 
 @task(name="Monitoring metrics")
+def training_monitoring(reference_data: pd.DataFrame, current_data: pd.DataFrame) -> dict:
+    """
+    Create the training flow monitoring report using Evidently.
+
+    :param reference_data: the reference data
+    :param val_data: the current data
+    :return: a dictionary containing the monitoring metrics
+    """
+    col_mapping = ColumnMapping(
+        target=TARGET, prediction="prediction", numerical_features=NUM_FEATURES, categorical_features=CAT_FEATURES
+    )
+
+    report = Report(
+        metrics=[
+            ColumnDriftMetric(column_name="prediction"),
+            DatasetDriftMetric(),
+            DatasetMissingValuesMetric(),
+            ColumnDriftMetric(column_name=TARGET),
+        ]
+    )
+
+    report.run(reference_data=reference_data, current_data=current_data, column_mapping=col_mapping)
+    metrics_dict = report.as_dict()["metrics"]
+    return metrics_dict
+
+
+@task(name="Monitoring metrics")
 def monitor_model_performance(reference_data: pd.DataFrame, current_data: pd.DataFrame) -> dict:
     """
     Create monitoring report using Evidently.
@@ -304,6 +331,55 @@ def save_monitoring_metrics_in_s3(metrics_dict: dict, bucket_name: str, file_key
     :param file_key: the full path to the JSON file
     """
     save_dict_in_s3(data=metrics_dict, bucket=bucket_name, file_path=file_key)
+
+
+@task(name="extract_batch_report_data")
+def extract_training_report_data(batch_date, metrics_dict: dict, db_name: str) -> None:
+    """
+    Extract the monitoring metrics and store them in a PostgreSQL database.
+
+    :param batch_date: the date of the batch
+    :param metrics_dict: the dictionary containing the monitoring metrics
+    :param db_name: the name of the Postgres db
+    """
+    drift_target = {
+        "batch_date": batch_date,
+        "drift_stat_test": metrics_dict[3]["result"]["stattest_name"],
+        "drift_stat_threshold": metrics_dict[3]["result"]["stattest_threshold"],
+        "drift_score": metrics_dict[3]["result"]["drift_score"],
+        "drift_detected": metrics_dict[3]["result"]["drift_detected"],
+    }
+
+    drift_prediction = {
+        "batch_date": batch_date,
+        "drift_stat_test": metrics_dict[0]["result"]["stattest_name"],
+        "drift_stat_threshold": metrics_dict[0]["result"]["stattest_threshold"],
+        "drift_score": metrics_dict[0]["result"]["drift_score"],
+        "drift_detected": metrics_dict[0]["result"]["drift_detected"],
+    }
+
+    drift_dataset = {
+        "batch_date": batch_date,
+        "drift_share": metrics_dict[1]["result"]["drift_share"],
+        "number_of_columns": metrics_dict[1]["result"]["number_of_columns"],
+        "number_of_drifted_columns": metrics_dict[1]["result"]["number_of_drifted_columns"],
+        "share_of_drifted_columns": metrics_dict[1]["result"]["share_of_drifted_columns"],
+        "dataset_drift": metrics_dict[1]["result"]["dataset_drift"],
+    }
+
+    params = {
+        "user": os.getenv("POSTGRES_USER"),
+        "pass": os.getenv("POSTGRES_PASSWORD"),
+        "host": os.getenv("POSTGRES_HOST"),
+        "port": os.getenv("POSTGRES_PORT"),
+        "database": db_name,
+    }
+    engine = create_engine("postgresql://%(user)s:%(pass)s@%(host)s:%(port)s/%(database)s" % params)
+
+    # insert metrics
+    pd.DataFrame(drift_target, index=[0]).to_sql("drift_target", engine, if_exists="append", index=False)
+    pd.DataFrame(drift_prediction, index=[0]).to_sql("drift_prediction", engine, if_exists="append", index=False)
+    pd.DataFrame(drift_dataset, index=[0]).to_sql("drift_dataset", engine, if_exists="append", index=False)
 
 
 @task(name="extract_batch_report_data")
