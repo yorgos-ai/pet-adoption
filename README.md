@@ -1,3 +1,6 @@
+![plot](images/pet-adoption.jpg)
+*[Image source](https://pethavenmn.org/wp-content/uploads/2017/08/5a898cc6f6567557b5376222cfa764d593fd7cbb.jpg)
+
 # Pet Adoption Classifier
 This repository contains an implementation of an end to end pet adoption classifier.
 
@@ -27,12 +30,16 @@ There are two main flows in this project. The training flow uses the training an
 ### Training flow
 ![plot](images/training_flow.png)
 
-This section provides an overview of the training flow. First, it reads the csv file from the [data](data) directory of the repository. The preprocessing step casts all numerical columns as float type. Afterwards, the data is split in three subsets (train, validation and test) using statified splitting, to ensure that relative class frequencies is approximately preserved in each subset. All three subsets are stored in S3. A CatBoost classifier with default hyperparameters is trained on the training set. The validation set is used to evaluate the performance of the model and select the optimal number of trees. Experiment tracking is implemented using MLflow with a SQLite database as the backend. All model hyperparameters along with training and validation performance metrics are logged in Mlflow. Furthermore, the classification report and confusion matrix images from the validation set are tracked by MLflow. The MLflow Model Registry is used to promote the model to production stage if the recall metric on validation set exceeds the 0.9 threshold. The MLflow RUN ID of the promoted model is stored in S3. Model monitoring is implemented with Evidently AI. The monitoring report is stored in S3 and a selection of monitoring metrics are stored in a PostgreSQL database. Finally, Grafana ingests the monitoring metrics to visualize the monitoring dashboard of the training flow.
+This section provides an overview of the training flow. The first step of the pipeline reads the csv file from the [data](data) directory of the repository. The preprocessing step casts all numerical columns as float type. Afterwards, the data is split in three subsets (train, validation and test) using statified splitting, to ensure that relative class frequencies is approximately preserved in each subset. All three subsets are stored in S3.
+
+A CatBoost classifier with default hyperparameters is trained on the training set. The validation set is used to evaluate the performance of the model and select the optimal number of trees. Experiment tracking is implemented using MLflow with a SQLite database as the backend. All model hyperparameters along with training and validation performance metrics are logged in Mlflow. Furthermore, the classification report and confusion matrix images from the validation set are tracked by MLflow. The MLflow Model Registry is used to promote the model to production stage if the recall metric on validation set exceeds the 0.9 threshold. The MLflow RUN ID of the promoted model is stored in S3. Model monitoring is implemented with Evidently AI.
+
+The monitoring report is stored in S3 and a selection of monitoring metrics are stored in a PostgreSQL database. Finally, Grafana ingests the monitoring metrics to visualize the monitoring dashboard of the training flow.
 
 ### Batch prediction flow
 ![plot](images/prediction_flow.png)
 
-This section provides an overview of the batch prediction flow. The test subset is retrieved from S3 and the data get preprocessed. The MLflow RUN ID of the production model is retrieved from S3, which is used to load the trained model from MLflow. The test subset is split in 12 chunks and a timestamp incremented by 1 hour is appended to each chuck in order to simulate a batch prediction scenario. The model is applied to each chunk to predict the adoption probability. Evidently calculates a monitoring report for each chunk which is stored in S3. A selection of monitoring metrics is stored in the PostgreSQL database. Finally, Grafana loads the batch prediction metrics from the Postgres database to populate the batch prediction monitoring plots.
+This section provides an overview of the batch prediction flow. The pipeline retrieves the test subset from S3 and applies the pre-processing to the data. The MLflow RUN ID of the production model is retrieved from S3, which is used to load the trained model from MLflow. The test subset is split in 12 chunks and a timestamp incremented by 1 hour is appended to each chuck in order to simulate a batch prediction scenario. The model is applied to each chunk to predict the adoption probability. Evidently calculates a monitoring report for each chunk which is stored in S3. A selection of monitoring metrics is stored in the Postgres database. Finally, Grafana loads the batch prediction metrics from the Postgres db to populate the batch prediction monitoring plots.
 
 > [!NOTE]
 > Due to the limited number of data records available (approx. 2000), the test set is preserved to simulate hourly batch predictions.
@@ -84,8 +91,10 @@ make run_flows
 ```
 This make command will first execute the training flow and then the prediction flow. You can access the [Prefect UI](http://127.0.0.1:4200) to see the execution of both flows.
 
+#### Prefect UI dashboard
 ![plot](images/prefect-ui-dashboard.png)
 
+#### Prefect UI flows
 ![plot](images/prefect-ui-flows.png)
 
 
@@ -108,8 +117,10 @@ MLflow Tracking Server is used to track the experiments and log training artifac
 
 Both flows are monitored using Evidently. The metrics are collected during the flow runs and are stored in a Postgres DB. Grafana connects to the Postgres DB to get the metrics and build the monitoring dashboards. Access the [Evidently UI](http://127.0.0.1:3000) to view the dashboards. The user name and password are both 'admin'.
 
+#### Grafana Training Monitoring dashboard
 ![plot](images/train-dashboard.png)
 
+#### Grafana Prediction Monitoring dashboard
 ![plot](images/prediction-dashboard.png)
 
 ## Unit tests
@@ -119,12 +130,24 @@ make tests
 ```
 
 ## Linting and formatting
-This project uses Ruff for both linting and formatting. Details about the configuration can be found in the [pyproject.toml](pyproject.toml) file.
+This project uses [Ruff](https://docs.astral.sh/ruff/) for both linting and formatting. Details about the configuration can be found in the [pyproject.toml](pyproject.toml) file.
 
 ## Pre-commit hooks
 Pre-commit hooks are used for code linting/formatting and other checks before every commit. You can find the complete configuration in the [.pre-commit-config.yaml](.pre-commit-config.yaml) file.
+
+## Git
+
+#### Branching strategy
+The primary stable branch is `main`. This branch is protected, meaning you can not directly push commits on this branch. You can checkout the `development` branch and commit your changes directly on that branch. Pushing the new commits to the remote will trigger the [CI pipeline](#ci-with-github-actions). If the CI pipeline is successfull, you can create a pull request from `development` to the `main` branch to merge your changes.
+
+Alternatively, you can create a feature branch from `development`, commit your changes and push your branch to the remote. Then, create a pull request form your feature branch to `development`. This step will trigger the [CI pipeline](#ci-with-github-actions). If the CI pipeline is successfull, you can merge your changes to the `development` branch. Finally, you should create another pull request from the `development` branch to `main` to merge your changes to the main stable branch.
+
+#### CI with Github Actions
+The CI pipeline is executed whenever new commits are pushed on the `development` branch or a pull request is created from a feature branch to `developemnt`. The CI pipeline performs code linting and formatting using Ruff and finally executes the unti tests and generates the code coverage report.
+
 
 ## Backlog for future improvements
 1. Add integration tests by testing complete Prefect flows.
 2. IaC with Terraform to manage the infratructure.
 3. Use AWS EventBridge to trigger the prediction pipeline automatically when a new test set is uploaded in S3.
+4. Add Continuous Deployment Github action to deploy docker-compose on ECS.
