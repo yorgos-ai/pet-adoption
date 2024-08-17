@@ -32,6 +32,7 @@ sudo apt update
 sudo apt install docker.io
 sudo groupadd docker
 sudo usermod -aG docker ${USER}
+newgrp docker
 echo "Docker version $(docker --version) installed successfully."
 
 # Install Docker Compose

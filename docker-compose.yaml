@@ -41,7 +41,7 @@ services:
       - frontend
 
   prefect-server:
-    image: prefecthq/prefect:2.20-python3.10
+    image: prefecthq/prefect:2.11.5-python3.11
     restart: always
     volumes:
       - prefect:/root/.prefect
