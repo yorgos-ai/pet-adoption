@@ -31,6 +31,8 @@ start_services:
 	poetry shell
 	dotenv
 	sudo docker-compose up --build -d
+	prefect server start &
+	prefect config set PREFECT_API_URL=http://127.0.0.1:4200/api
 
 build: start_services mlflow
 
@@ -46,7 +48,7 @@ run_flows:
 prefect_deploy:
 	poetry shell
 	python pet_adoption/flows/prefect_deploy.py
-	prefect work-pool create --type process main_pool
+	# prefect work-pool create --type process main_pool
 	prefect worker start --pool main_pool
 
 e2e_flow: build run_flows
