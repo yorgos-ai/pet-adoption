@@ -87,7 +87,7 @@ This make command executes the [set_up.sh](pet_adoption/scripts/set_up.sh) scrip
 - Installs and configures Poetry
 
 ### 8. Install Python dependencies
-Open a new terminal and execute the following command:
+<ins>Open a new terminal and execute the following command</ins>:
 ```
 make env_setup
 ```
