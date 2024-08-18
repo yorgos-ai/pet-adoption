@@ -53,7 +53,7 @@ In the AWS console, navigate to the `S3` service and create the following two S3
 > The name of the S3 buckets should be unique within an AWS region. You can add a suffix like `-test` or something similar on the S3 bucket names to make them unique.
 
 ### 5. Clone the project repository using HTTPS
-Go to VS code which is connected with SSH to the EC2 instance, open a new terminal and execute the following commands:
+Go to VS code which is connected with SSH to the EC2 instance, <ins>open a new terminal</ins> and copy paste the following command:
 ```
 git clone https://github.com/yorgos-ai/pet-adoption.git && \
 cd pet-adoption/ && code .
@@ -87,11 +87,11 @@ This make command executes the [set_up.sh](pet_adoption/scripts/set_up.sh) scrip
 - Installs and configures Poetry
 
 ### 8. Install Python dependencies
-Open a new terminal and execute the following command:
+<ins>Open a new terminal and execute the following command</ins>:
 ```
 make env_setup
 ```
-This make command installs Python 3.0.12 using Pyenv, creates a Poetry environment and installs all necessary Python packages that are used in this project.
+This make command installs Python 3.0.12 using Pyenv, creates a Poetry environment and installs all the necessary Python packages used in this project.
 
 ### 9. Configure AWS credentials
 Set up your AWS profile by adding your `AWS_SECRET_ACCESS_KEY` and `AWS_ACCESS_KEY_ID` form step 1 to your AWS profile. These credentials will be automatically used to authenticate your IAM role and be able access AWS services from your EC2 instance.
@@ -99,4 +99,10 @@ Set up your AWS profile by adding your `AWS_SECRET_ACCESS_KEY` and `AWS_ACCESS_K
 ```
 aws configure --profile mlops-zoomcamp
 ```
-Copy-paste the secret access key and the access key id to the terminal. Also, add your AWS region as the default region in your AWS profile.
+Copy-paste the secret access key and the access key id to the terminal. Also, add your AWS region as the default region in your AWS profile and set the default output format to json. Your AWS profile should look something like this:
+```
+AWS Access Key ID: XXXXXXXXX
+AWS Secret Access Key: XXXXXXXXX
+Default region name: eu-west-1
+Default output format: json
+```
