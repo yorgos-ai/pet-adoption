@@ -24,20 +24,19 @@ env_setup: pyenv poetry pre-commit
 # Applications
 
 mlflow:
-	poetry shell
-	mlflow server --backend-store-uri '${MLFLOW_TRACKING_URI}' --default-artifact-root 's3://${S3_BUCKET_MLFLOW}'
+	poetry run mlflow server --backend-store-uri '${MLFLOW_TRACKING_URI}' --default-artifact-root 's3://${S3_BUCKET_MLFLOW}'
 
 start_services:
-	poetry shell
-	dotenv
+	poetry run dotenv
 	sudo docker-compose up --build -d
-	prefect server start &
-	prefect config set PREFECT_API_URL=http://127.0.0.1:4200/api
+	poetry run prefect server start &
+	poetry run prefect config set PREFECT_API_URL=http://127.0.0.1:4200/api
 
 build: start_services mlflow
 
 kill_services:
 	sudo docker-compose down --remove-orphans --volumes
+	sudo docker system prune
 
 # Workflows orchestration
 
@@ -46,12 +45,8 @@ run_flows:
 	poetry run python pet_adoption/flows/batch_prediction.py
 
 prefect_deploy:
-	poetry shell
-	python pet_adoption/flows/prefect_deploy.py
-	# prefect work-pool create --type process main_pool
-	prefect worker start --pool main_pool
-
-e2e_flow: build run_flows
+	poetry run python pet_adoption/flows/prefect_deploy.py
+	poetry run prefect worker start --pool main_pool
 
 # Tests
 

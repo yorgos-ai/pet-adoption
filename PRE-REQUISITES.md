@@ -55,9 +55,8 @@ In the AWS console, navigate to the `S3` service and create the following two S3
 ### 5. Clone the project repository using HTTPS
 Go to VS code which is connected with SSH to the EC2 instance, open a new terminal and execute the following commands:
 ```
-$ git clone https://github.com/yorgos-ai/pet-adoption.git
-$ cd pet-adoption/
-$ code .
+git clone https://github.com/yorgos-ai/pet-adoption.git && \
+cd pet-adoption/ && code .
 ```
 A new VS code window will pop up and the repository files and folders should be visible in the left panel.
 
@@ -69,8 +68,7 @@ Rename the `.env.example` file to `.env` and change the name of the S3 buckets t
 ### 7. Run the initial setup script.
 Install `make` in your EC2 instance to be able to execute make commands.
 ```
-$ sudo apt update
-$ sudo apt install make
+sudo apt update && sudo apt install make
 ```
 
 Once the installation is finished, run the set up script.

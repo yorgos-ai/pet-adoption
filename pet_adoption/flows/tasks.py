@@ -395,11 +395,11 @@ def train_metrics_to_db(batch_date, metrics_dict: dict, db_name: str) -> None:
     engine = create_engine("postgresql://%(user)s:%(pass)s@%(host)s:%(port)s/%(database)s" % params)
 
     # insert metrics
-    pd.DataFrame(drift_target, index=[0]).to_sql("drift_target", engine, if_exists="append", index=False)
-    pd.DataFrame(drift_prediction, index=[0]).to_sql("drift_prediction", engine, if_exists="append", index=False)
-    pd.DataFrame(drift_dataset, index=[0]).to_sql("drift_dataset", engine, if_exists="append", index=False)
+    pd.DataFrame(drift_target, index=[0]).to_sql("drift_target", engine, if_exists="replace", index=False)
+    pd.DataFrame(drift_prediction, index=[0]).to_sql("drift_prediction", engine, if_exists="replace", index=False)
+    pd.DataFrame(drift_dataset, index=[0]).to_sql("drift_dataset", engine, if_exists="replace", index=False)
     pd.DataFrame(classification_metrics, index=[0]).to_sql(
-        "classification_metrics", engine, if_exists="append", index=False
+        "classification_metrics", engine, if_exists="replace", index=False
     )
 
 
