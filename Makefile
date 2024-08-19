@@ -1,4 +1,4 @@
-.PHONY: tests mlflow start_services run_flows e2e_flow build
+.PHONY: tests mlflow start_services run_flows build
 include .env
 
 # Complete setup
