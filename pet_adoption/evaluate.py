@@ -43,9 +43,6 @@ def plot_confusion_matrix(y_true: pd.Series, y_pred: pd.Series, save_path: Optio
     if save_path:
         plt.savefig(save_path)
 
-    # plt.show()
-    # plt.close()
-
 
 def plot_classification_report(y_true: pd.Series, y_pred: pd.Series, save_path: Optional[Path] = None) -> Dict:
     """
