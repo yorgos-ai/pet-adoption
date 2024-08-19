@@ -53,8 +53,10 @@ In the AWS console, navigate to the `S3` service and create the following S3 buc
 > The name of the S3 buckets should be unique within an AWS region. You can add a suffix like `-test` or something similar on the S3 bucket names to make them unique.
 
 ### 5. Clone the project repository using HTTPS
+
 Open VS code in your local machine and connect to the EC2 instance using SSH.
 <ins>Open a new terminal</ins> and copy paste the following command:
+
 ```
 git clone https://github.com/yorgos-ai/pet-adoption.git && \
 cd pet-adoption/ && code .
@@ -107,5 +109,6 @@ AWS Secret Access Key: XXXXXXXXX
 Default region name: eu-west-1
 Default output format: json
 ```
+
 > [!IMPORTANT]
 > Note that we are creating a named AWS profile called `mlops-zoomcamp`. The name of the AWS profile is stored in the .env file as an environment variable, which is loaded at run time.

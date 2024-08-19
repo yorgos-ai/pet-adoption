@@ -47,6 +47,8 @@ services:
       - prefect:/root/.prefect
     entrypoint: ["/opt/prefect/entrypoint.sh", "prefect", "server", "start"]
     environment:
+      # PREFECT_UI_URL: http://localhost:4200/api
+      # PREFECT_API_URL: http://localhost:4200/api
       PREFECT_UI_URL: http://127.0.0.1:4200/api
       PREFECT_API_URL: http://127.0.0.1:4200/api
       # If you want to access Prefect Server UI from anywhere other than the Docker host machine, you will need to change
